@@ -1,26 +1,102 @@
 @import "tailwindcss";
 
+/* ============================================================
+   TournamentPal — "Bold Bulletin" design language
+   High-contrast, poster-typography, athletic.
+   ============================================================ */
+
+@theme {
+  /* Fonts loaded via <link> in layout.tsx (matches the design source files). */
+  --font-display: "Anton", system-ui, sans-serif;
+  --font-body: "Archivo", system-ui, sans-serif;
+
+  /* Core palette */
+  --color-ink: #0a0a0a;
+  --color-paper: #ffffff;
+  --color-accent: #facc15;
+  --color-accent-ink: #0a0a0a;
+  --color-blue: #2563eb;
+  --color-danger: #ff3b30;
+  --color-success: #16a34a;
+
+  /* Greys */
+  --color-muted: #8a8a8a;
+  --color-faint: #ededed;
+  --color-haze: #f5f4f1;
+  --color-board: #e8e6e1;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  padding: 0;
+  margin: 0;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-board);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@layer components {
+  .display {
+    font-family: var(--font-display);
+    letter-spacing: 0.4px;
+    line-height: 0.98;
+    text-transform: uppercase;
+  }
+
+  .eyebrow {
+    font-family: var(--font-body);
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .btn-accent {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+    font-family: var(--font-display);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .btn-ink {
+    background: var(--color-ink);
+    color: #fff;
+    font-family: var(--font-display);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* The app renders inside a phone-width column on larger screens. */
+  .app-shell {
+    width: 100%;
+    max-width: 460px;
+    margin-inline: auto;
+    min-height: 100dvh;
+    background: var(--color-paper);
+    position: relative;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

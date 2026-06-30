@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TournamentPal
 
-## Getting Started
+Run the tournament, not the chaos. A mobile-first PWA for baseball & softball
+tournament directors — built with Next.js 16 (App Router), Supabase (Postgres +
+Auth), and Tailwind v4 in the "Bold Bulletin" design language from the source mockups.
 
-First, run the development server:
+This build is the **director vertical slice**: the engine that produces all the
+data the follower and team-manager views will later consume.
+
+## What works end-to-end
+
+- **Auth** — director sign up / sign in (Supabase email), session handling via
+  `proxy.ts` (Next 16's renamed middleware), protected `/director` area.
+- **Create a tournament** — 4-step wizard: details → teams → format (live,
+  auto-fitting presets) → review & publish.
+- **Tournament engine** (`lib/engine`, fully unit-tested) — snake-seeded pools,
+  round-robin pool play, single-elimination bracket seeding, field + time
+  assignment that avoids team double-booking and enforces field age/size
+  restrictions, and standings with a director-ordered tiebreaker chain.
+- **Run the event** — post scores with big tap steppers, correct posted scores,
+  live pool standings, seed the bracket from standings, manage fields & sites,
+  edit rules/tiebreakers.
+
+## Stubbed (by design — no paid accounts needed yet)
+
+SMS texts, push notifications, and payments. The notification dispatcher
+(`lib/notify.ts`) logs what *would* be sent and records it in `notifications_log`,
+so the full product flow works. Add provider keys to `.env.local` to switch the
+stub for real Twilio / Stripe later.
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm test           # engine unit tests (13)
+npx tsx lib/engine/smoke.ts   # end-to-end pipeline demo
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env.local` is already wired to the connected Supabase project. See
+`.env.example` for the full list of variables.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+app/
+  page.tsx                  Marketing hero (public)
+  login/ signup/            Auth screens
+  auth/                     Server actions + email-confirm route handler
+  director/                 Signed-in area
+    page.tsx                Dashboard
+    new/ [id]/teams|format|review   Create-tournament wizard
+    [id]/                   Overview, scores, standings, fields, rules
+    actions.ts              All server actions (mutations)
+components/                 Bold Bulletin UI primitives + screens
+lib/
+  engine/                   Pure, framework-free tournament logic (+ tests)
+  supabase/                 Browser + server clients
+  schedule-builder.ts       DB-aware schedule generation
+  notify.ts                 Notification stub
+proxy.ts                    Auth session refresh + route gating
+```
 
-## Learn More
+## Database
 
-To learn more about Next.js, take a look at the following resources:
+Postgres schema (tournaments, divisions, teams, sites, fields, pools,
+pool_teams, games, follows, notifications_log, profiles) with Row Level
+Security: directors get full access to their own events; published events are
+publicly readable (the foundation for the follower view). A trigger
+auto-creates a profile on signup.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Next up (not in this slice)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Public follower view, follow-a-team + alerts, team-manager claim/dashboard,
+director messaging, concessions, weather holds, and wiring the real SMS/push/
+payment providers.
