@@ -14,8 +14,8 @@ export function DirectorShell({
   showTabs?: boolean;
 }) {
   return (
-    <div className="app-shell flex flex-col">
-      <div className="flex-1 px-5 pb-6 pt-6">{children}</div>
+    <div className="app-shell flex flex-col md:my-6 md:min-h-[calc(100dvh-3rem)] md:overflow-hidden md:rounded-3xl md:border md:border-ink/10 md:shadow-[0_24px_60px_rgba(20,24,40,.12)]">
+      <div className="flex-1 px-5 pb-6 pt-6 md:px-9 md:pt-8">{children}</div>
       {showTabs && <TabBar />}
     </div>
   );

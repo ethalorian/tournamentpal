@@ -72,7 +72,7 @@ export default async function DirectorHome() {
       {active.length === 0 ? (
         <EmptyState title="No active events" body="Spin up your first tournament from a preset." />
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 md:grid md:grid-cols-2">
           {active.map((t) => {
             const c = countMap.get(t.id);
             return (
@@ -102,7 +102,7 @@ export default async function DirectorHome() {
       {past.length > 0 && (
         <>
           <Eyebrow className="mt-6 mb-3">Past</Eyebrow>
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2.5 md:grid md:grid-cols-2">
             {past.map((t) => (
               <Link
                 key={t.id}

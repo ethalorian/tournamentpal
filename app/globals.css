@@ -82,7 +82,7 @@ body {
     text-transform: uppercase;
   }
 
-  /* The app renders inside a phone-width column on larger screens. */
+  /* Mobile: a phone-width column. Desktop: a wider centered app panel. */
   .app-shell {
     width: 100%;
     max-width: 460px;
@@ -90,6 +90,11 @@ body {
     min-height: 100dvh;
     background: var(--color-paper);
     position: relative;
+  }
+  @media (min-width: 768px) {
+    .app-shell {
+      max-width: 860px;
+    }
   }
 }
 

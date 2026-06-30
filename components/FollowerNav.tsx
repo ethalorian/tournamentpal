@@ -42,14 +42,18 @@ export function FollowerNav({ id }: { id: string }) {
     { seg: "/directions", label: "Directions", icon: "pin" },
   ];
   return (
-    <nav className="sticky bottom-0 z-30 flex bg-ink px-2 pt-3 pb-6">
+    <nav className="sticky bottom-0 z-30 flex bg-ink px-2 pt-3 pb-6 md:order-2 md:bottom-auto md:justify-center md:gap-2 md:border-t md:border-white/10 md:pb-3">
       {tabs.map((t) => {
         const href = base + t.seg;
         const active = t.seg === "" ? pathname === base : pathname.startsWith(href);
         return (
-          <Link key={t.label} href={href} className="flex flex-1 flex-col items-center gap-1.5">
+          <Link
+            key={t.label}
+            href={href}
+            className="flex flex-1 flex-col items-center gap-1.5 md:flex-none md:flex-row md:gap-2 md:rounded-full md:px-5 md:py-2"
+          >
             {ICONS[t.icon](active)}
-            <span className="display text-[10px] tracking-widest" style={{ color: active ? "#facc15" : "#7a7a7a" }}>
+            <span className="display text-[10px] tracking-widest md:text-[12px]" style={{ color: active ? "#facc15" : "#7a7a7a" }}>
               {t.label}
             </span>
           </Link>

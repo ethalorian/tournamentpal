@@ -11,7 +11,7 @@ export default async function SignupPage({
   const role = roleParam === "follower" ? "follower" : "director";
 
   return (
-    <div className="app-shell flex min-h-[100dvh] flex-col px-6 py-10">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[460px] flex-col px-6 py-10">
       <Link href="/" className="display text-[18px] tracking-[2px]">
         TOURNAMENTPAL
       </Link>
