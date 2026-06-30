@@ -103,12 +103,24 @@ export default async function TournamentOverview({ params }: { params: Promise<{
       {/* Share + danger */}
       <Card className="mt-6">
         <div className="text-[12px] font-bold uppercase tracking-wide text-muted">Follower link</div>
-        <div className="mt-2 truncate rounded-lg bg-haze px-3 py-2 font-mono text-[12px]">
-          /t/{id}
-        </div>
-        <p className="mt-1.5 text-[11px] text-muted">
-          The public follower view ships next — this is the link followers will open.
-        </p>
+        <div className="mt-2 truncate rounded-lg bg-haze px-3 py-2 font-mono text-[12px]">/t/{id}</div>
+        {isDraft ? (
+          <p className="mt-2 text-[11px] text-muted">
+            Drafts are private. Publish to open the public follower page and start alerts.
+          </p>
+        ) : (
+          <>
+            <Link
+              href={`/t/${id}`}
+              className="btn-ink mt-3 flex h-11 items-center justify-center rounded-xl text-[13px]"
+            >
+              Open public follower page
+            </Link>
+            <p className="mt-1.5 text-[11px] text-muted">
+              Share this so families can follow teams and get score alerts.
+            </p>
+          </>
+        )}
       </Card>
 
       <form action={deleteTournament} className="mt-4">

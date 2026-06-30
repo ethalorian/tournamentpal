@@ -21,6 +21,23 @@ data the follower and team-manager views will later consume.
   live pool standings, seed the bracket from standings, manage fields & sites,
   edit rules/tiebreakers.
 
+## Public follower view (`/t/[id]`)
+
+Anonymous, no account needed to browse. Built on the same data the director
+engine produces:
+
+- **Live home** — next games, latest results, division chips, and a follow list.
+- **Schedule** — full slate grouped by day, with field and final scores.
+- **Standings** — live pool tables (same engine + tiebreakers as the director).
+- **Team page** — a team's games (W/L), pool position, and a Follow button.
+- **Directions** — venues, parking, and one-tap "Open in Maps".
+- **Follow a team** — anonymous visitors are sent to a free, lightweight
+  follower sign-up that returns them to the team; following records the
+  subscription that the (stubbed) score texts will use.
+
+RLS keeps drafts private and exposes only published/live/completed events to
+anonymous readers — verified end-to-end against the live database.
+
 ## Stubbed (by design — no paid accounts needed yet)
 
 SMS texts, push notifications, and payments. The notification dispatcher
@@ -71,6 +88,5 @@ auto-creates a profile on signup.
 
 ## Next up (not in this slice)
 
-Public follower view, follow-a-team + alerts, team-manager claim/dashboard,
-director messaging, concessions, weather holds, and wiring the real SMS/push/
-payment providers.
+Team-manager claim/dashboard, director messaging, concessions, weather holds, a
+full notification-preferences hub, and wiring the real SMS/push/payment providers.

@@ -31,6 +31,8 @@ export async function signUpAction(
   const fullName = String(formData.get("full_name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const role = String(formData.get("role") ?? "director") === "follower" ? "follower" : "director";
+  const next = String(formData.get("next") ?? "") || (role === "follower" ? "/" : "/director");
 
   if (!fullName || !email || !password)
     return { error: "Name, email and password are all required." };
@@ -42,8 +44,8 @@ export async function signUpAction(
     email,
     password,
     options: {
-      data: { full_name: fullName, role: "director" },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/confirm`,
+      data: { full_name: fullName, role },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/confirm?next=${encodeURIComponent(next)}`,
     },
   });
   if (error) return { error: error.message };
@@ -51,11 +53,13 @@ export async function signUpAction(
   // If email confirmation is disabled, a session is returned immediately.
   if (data.session) {
     revalidatePath("/", "layout");
-    redirect("/director");
+    redirect(next);
   }
   return {
     message:
-      "Account created. Check your email to confirm, then sign in to launch your first event.",
+      role === "follower"
+        ? "Account created. Check your email to confirm, then you can follow teams and get alerts."
+        : "Account created. Check your email to confirm, then sign in to launch your first event.",
   };
 }
 

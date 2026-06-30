@@ -8,9 +8,11 @@ import { Button, Field, inputClass } from "@/components/ui";
 export function AuthForm({
   mode,
   next,
+  role,
 }: {
   mode: "signin" | "signup";
   next?: string;
+  role?: "director" | "follower";
 }) {
   const action = mode === "signin" ? signInAction : signUpAction;
   const [state, formAction, pending] = useActionState<AuthState, FormData>(
@@ -45,6 +47,7 @@ export function AuthForm({
       </Field>
 
       {next && <input type="hidden" name="next" value={next} />}
+      {mode === "signup" && role && <input type="hidden" name="role" value={role} />}
 
       {state?.error && (
         <p className="rounded-xl bg-danger/10 px-4 py-3 text-[13px] font-semibold text-danger">
