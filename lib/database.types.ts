@@ -60,6 +60,42 @@ export type Database = {
         Update: { created_at?: string; follower_id?: string; team_id?: string; tournament_id?: string }
         Relationships: []
       }
+      messages: {
+        Row: {
+          id: string
+          tournament_id: string
+          team_id: string
+          sender_id: string
+          sender_role: string
+          body: string
+          broadcast: boolean
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tournament_id: string
+          team_id: string
+          sender_id: string
+          sender_role: string
+          body: string
+          broadcast?: boolean
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tournament_id?: string
+          team_id?: string
+          sender_id?: string
+          sender_role?: string
+          body?: string
+          broadcast?: boolean
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       games: {
         Row: {
           away_score: number | null
@@ -281,6 +317,19 @@ export type Database = {
     Functions: {
       owns_tournament: { Args: { t_id: string }; Returns: boolean }
       tournament_public: { Args: { t_id: string }; Returns: boolean }
+      is_team_manager: { Args: { t_team: string }; Returns: boolean }
+      manages_in_tournament: { Args: { t_id: string }; Returns: boolean }
+      claim_team: { Args: { t_team: string }; Returns: undefined }
+      claim_info: {
+        Args: { t_team: string }
+        Returns: {
+          team_name: string
+          tournament_id: string
+          tournament_name: string
+          claimed: boolean
+          manager_is_me: boolean
+        }[]
+      }
     }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }

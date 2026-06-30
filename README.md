@@ -38,6 +38,17 @@ engine produces:
 RLS keeps drafts private and exposes only published/live/completed events to
 anonymous readers — verified end-to-end against the live database.
 
+## Team-manager view (`/claim/[teamId]`, `/manager`)
+
+The third persona — the coach. A director shares a per-team claim link (copyable
+from the Teams step); a coach opens it, creates a free manager account, and
+claims the (unclaimed) team. From the manager dashboard they see their next
+game, full schedule, and live pool position, and message the director. The
+director gets an inbox of all claimed teams (with unread badges), 1:1 threads,
+and a broadcast that lands in every coach's thread. Claiming is link-based and
+single-owner: a claimed team can't be stolen, and threads are isolated per team
+— all verified in `supabase/tests/rls_manager.test.sql`.
+
 ## Stubbed (by design — no paid accounts needed yet)
 
 SMS texts, push notifications, and payments. The notification dispatcher
@@ -56,6 +67,25 @@ npx tsx lib/engine/smoke.ts   # end-to-end pipeline demo
 
 `.env.local` is already wired to the connected Supabase project. See
 `.env.example` for the full list of variables.
+
+## Testing
+
+- `npm test` — tournament engine unit tests (pools, scheduling, standings, bracket seeding).
+- `npx tsx lib/engine/smoke.ts` — end-to-end engine pipeline demo.
+- `supabase/tests/rls_manager.test.sql` — RLS test for the team-manager persona:
+  team claiming integrity and director↔manager message-thread isolation.
+- `supabase/tests/rls_auth.test.sql` — **auth + Row Level Security regression test.**
+  Simulates anonymous, owner, non-owner and follower identities and asserts the
+  authorization boundary (e.g. anon can read published events but not drafts,
+  directors can't touch each other's data, followers can't forge follows). Runs
+  in a transaction and rolls back. This is the test that catches RLS regressions
+  a `next build` cannot:
+
+  ```bash
+  psql "$SUPABASE_DB_URL" -f supabase/tests/rls_auth.test.sql
+  ```
+
+  It raises (non-zero exit) on any failure, so it drops straight into CI.
 
 ## Project structure
 
@@ -88,5 +118,6 @@ auto-creates a profile on signup.
 
 ## Next up (not in this slice)
 
-Team-manager claim/dashboard, director messaging, concessions, weather holds, a
-full notification-preferences hub, and wiring the real SMS/push/payment providers.
+All three personas are now in. Remaining from the design: concessions, weather
+holds, a full notification-preferences hub, sponsors/staff roles, and wiring the
+real SMS/push/payment providers (currently stubbed).

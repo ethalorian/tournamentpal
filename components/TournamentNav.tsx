@@ -9,6 +9,7 @@ export function TournamentNav({ id }: { id: string }) {
     { href: `/director/${id}`, label: "Overview", exact: true },
     { href: `/director/${id}/scores`, label: "Scores" },
     { href: `/director/${id}/standings`, label: "Standings" },
+    { href: `/director/${id}/messages`, label: "Messages" },
     { href: `/director/${id}/fields`, label: "Fields" },
     { href: `/director/${id}/rules`, label: "Rules" },
   ];

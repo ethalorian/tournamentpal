@@ -2,7 +2,8 @@ import Link from "next/link";
 import { loadOwnedTournament } from "@/lib/tournament";
 import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { Stepper } from "@/components/Stepper";
-import { Field, inputClass, Button, EmptyState, Eyebrow } from "@/components/ui";
+import { Field, inputClass, Button, EmptyState, Eyebrow, Badge } from "@/components/ui";
+import { CopyButton } from "@/components/CopyButton";
 import { addTeams, removeTeam } from "@/app/director/actions";
 
 export const dynamic = "force-dynamic";
@@ -67,21 +68,25 @@ export default async function TeamsStep({ params }: { params: Promise<{ id: stri
           {teamList.map((t) => (
             <div
               key={t.id}
-              className="flex items-center justify-between rounded-xl border border-faint px-3.5 py-2.5"
+              className="flex items-center justify-between gap-2 rounded-xl border border-faint px-3.5 py-2.5"
             >
-              <div className="flex items-center gap-3">
-                <span className="display flex h-7 w-7 items-center justify-center rounded-md bg-haze text-[12px]">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="display flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-haze text-[12px]">
                   {t.seed}
                 </span>
-                <span className="text-[14px] font-bold">{t.name}</span>
+                <span className="truncate text-[14px] font-bold">{t.name}</span>
+                {t.manager_id && <Badge tone="success">Coach</Badge>}
               </div>
-              <form action={removeTeam}>
-                <input type="hidden" name="team_id" value={t.id} />
-                <input type="hidden" name="tournament_id" value={id} />
-                <button type="submit" className="text-[12px] font-bold text-muted hover:text-danger">
-                  Remove
-                </button>
-              </form>
+              <div className="flex shrink-0 items-center gap-2">
+                {!t.manager_id && <CopyButton path={`/claim/${t.id}`} />}
+                <form action={removeTeam}>
+                  <input type="hidden" name="team_id" value={t.id} />
+                  <input type="hidden" name="tournament_id" value={id} />
+                  <button type="submit" className="text-[12px] font-bold text-muted hover:text-danger">
+                    Remove
+                  </button>
+                </form>
+              </div>
             </div>
           ))}
         </div>
