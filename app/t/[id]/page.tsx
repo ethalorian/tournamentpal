@@ -34,6 +34,14 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
   const allGames = games ?? [];
   const followed = new Set((follows.data ?? []).map((f) => f.team_id));
 
+  // Director-uploaded rules summary (bulleted), shown to followers.
+  const rulesSummary =
+    ((tournament.rules ?? {}) as { documentSummary?: string }).documentSummary ?? "";
+  const rulesLines = rulesSummary
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^[-•*]\s*/, "").trim())
+    .filter(Boolean);
+
   const upcoming = allGames
     .filter((g) => g.status === "scheduled" && g.home_team_id && g.away_team_id)
     .slice(0, 3);
@@ -142,6 +150,21 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
               );
             })}
           </div>
+        </>
+      )}
+
+      {/* Tournament rules */}
+      {rulesLines.length > 0 && (
+        <>
+          <Eyebrow className="mb-3 mt-7">Tournament rules</Eyebrow>
+          <ul className="flex flex-col gap-2 rounded-2xl border border-faint p-4">
+            {rulesLines.map((line, i) => (
+              <li key={i} className="flex gap-2 text-[13px] leading-relaxed">
+                <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
         </>
       )}
 
