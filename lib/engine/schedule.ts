@@ -405,6 +405,9 @@ export function assignSchedule<G extends ConstrainedGame>(
     // Per-day slot grid override: when pool play starts (minutes from midnight)
     // and how many windows that day. Days not listed use the uniform window.
     dayGrids?: Map<string, { startMin: number; windows: number }>;
+    // Manual field assignments, keyed by game `key` → field id. A pinned game is
+    // forced onto that field; every other game schedules around it.
+    fieldPins?: Map<string, string>;
   }
 ): (G & { fieldId: string | null; scheduledAt: string | null; conflict: string | null })[] {
   const { gameLengthMins: gLen, bufferMins, dayStartMin, dayEndMin } = opts.slot;
@@ -451,13 +454,17 @@ export function assignSchedule<G extends ConstrainedGame>(
     const awayC = g.awayTeamId ? opts.teamConstraints.get(g.awayTeamId) : undefined;
 
     // Fields this game is allowed to use at all (division + team allowlists).
-    const eligibleFields = fields.filter((f) => {
+    let eligibleFields = fields.filter((f) => {
       if (f.allowedDivisions.length > 0 && g.divisionName && !f.allowedDivisions.includes(g.divisionName))
         return false;
       if (homeC?.allowedFieldIds.length && !homeC.allowedFieldIds.includes(f.id)) return false;
       if (awayC?.allowedFieldIds.length && !awayC.allowedFieldIds.includes(f.id)) return false;
       return true;
     });
+
+    // A manually pinned game may only use its assigned field.
+    const pinnedField = opts.fieldPins?.get(g.key);
+    if (pinnedField) eligibleFields = eligibleFields.filter((f) => f.id === pinnedField);
 
     let placed = false;
     if (eligibleFields.length > 0) {

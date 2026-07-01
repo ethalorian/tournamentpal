@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { regenerateSchedule } from "@/lib/schedule-builder";
+import { regenerateSchedule, replaceFieldsAndTimes } from "@/lib/schedule-builder";
 
 async function client() {
   const supabase = await createClient();
@@ -233,14 +233,34 @@ export async function saveGameWindows(formData: FormData) {
   revalidatePath(`/director/${tournamentId}/scheduling`);
 }
 
-/** Pin (or auto) the field for a single game — used for championship games. */
-export async function setGameField(formData: FormData) {
+/**
+ * Pin a bracket game to a specific field (or clear the pin), then rebuild the
+ * schedule so every other game re-places around the fixed assignment. Pins are
+ * keyed by the game's stable engine key so they survive regeneration.
+ */
+export async function setBracketFieldPin(formData: FormData) {
   const { supabase } = await client();
   const tournamentId = String(formData.get("tournament_id") ?? "");
-  const gameId = String(formData.get("game_id") ?? "");
-  const fieldId = String(formData.get("field_id") ?? "") || null;
-  if (!gameId) return;
-  await supabase.from("games").update({ field_id: fieldId }).eq("id", gameId);
+  const key = String(formData.get("game_key") ?? "");
+  const fieldId = String(formData.get("field_id") ?? "");
+  if (!tournamentId || !key) return;
+
+  const config = await readScheduleConfig(supabase, tournamentId);
+  const pins = (
+    config.fieldPins && typeof config.fieldPins === "object" ? config.fieldPins : {}
+  ) as Record<string, string>;
+  if (fieldId) pins[key] = fieldId;
+  else delete pins[key];
+  await supabase
+    .from("tournaments")
+    .update({ schedule_config: { ...config, fieldPins: pins } } as never)
+    .eq("id", tournamentId);
+
+  // Re-flow fields/times around the new pin — WITHOUT rebuilding the bracket or
+  // wiping seeding/scores.
+  const { data: t } = await supabase.from("tournaments").select("*").eq("id", tournamentId).single();
+  if (t) await replaceFieldsAndTimes(supabase, t);
+
   revalidatePath(`/director/${tournamentId}/scheduling`);
   revalidatePath(`/director/${tournamentId}/scores`);
   revalidatePath(`/t/${tournamentId}/schedule`);

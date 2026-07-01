@@ -180,6 +180,11 @@ export async function regenerateSchedule(
     }
   }
 
+  // Manual field assignments (director pins), keyed by planned game key.
+  const fieldPinsObj =
+    ((tournament.schedule_config ?? {}) as { fieldPins?: Record<string, string> }).fieldPins ?? {};
+  const fieldPins = new Map<string, string>(Object.entries(fieldPinsObj));
+
   // Plan every division's games first, then place them all together so fields
   // are never double-booked across divisions.
   const planned: ConstrainedGame[] = [];
@@ -286,6 +291,7 @@ export async function regenerateSchedule(
     windowDivisions,
     dayStages,
     dayGrids,
+    fieldPins,
   });
 
   const gameRows: Database["public"]["Tables"]["games"]["Insert"][] = [];
@@ -327,6 +333,133 @@ export async function regenerateSchedule(
     bracketGames: bracketGameCount,
     conflicts: conflictCount,
   };
+}
+
+/**
+ * Re-place fields and times for the EXISTING games without rebuilding the
+ * bracket or wiping results. Used when a director pins a bracket field so the
+ * rest of the schedule re-flows around it. Preserves team assignments, seeding
+ * and scores; only field_id and scheduled_at change.
+ */
+export async function replaceFieldsAndTimes(supabase: SB, tournament: Tournament): Promise<number> {
+  const tId = tournament.id;
+  const [{ data: teams }, { data: fields }, { data: divisions }, { data: games }] = await Promise.all([
+    supabase.from("teams").select("*").eq("tournament_id", tId),
+    supabase.from("fields").select("*").eq("tournament_id", tId),
+    supabase.from("divisions").select("*").eq("tournament_id", tId).order("sort"),
+    supabase.from("games").select("*").eq("tournament_id", tId).order("created_at"),
+  ]);
+  const allTeams = (teams ?? []) as Team[];
+  const allFields = (fields ?? []) as Field[];
+  const allDivisions = (divisions ?? []) as Division[];
+  const allGames = games ?? [];
+  if (allGames.length === 0) return 0;
+
+  const cfg = { ...DEFAULT_SCHEDULE, ...((tournament.schedule_config ?? {}) as Partial<ScheduleConfig>) };
+  const slot: SlotConfig = {
+    days: enumerateDays(tournament.start_date, tournament.end_date),
+    dayStartMin: hhmmToMinutes(cfg.dayStart) ?? 480,
+    dayEndMin: hhmmToMinutes(cfg.dayEnd) ?? 1200,
+    gameLengthMins: cfg.gameLengthMins || 90,
+    bufferMins: cfg.bufferMins ?? 15,
+    timeZone: tournament.timezone || "America/New_York",
+  };
+  const eligibleFields: EngineField[] = allFields.map((f) => ({
+    id: f.id,
+    name: f.name,
+    allowedDivisions: f.allowed_divisions ?? [],
+  }));
+  const teamConstraints = new Map<string, TeamConstraint>();
+  for (const t of allTeams) {
+    teamConstraints.set(t.id, {
+      allowedFieldIds: t.allowed_field_ids ?? [],
+      availStartMin: hhmmToMinutes(t.avail_start),
+      availEndMin: hhmmToMinutes(t.avail_end),
+    });
+  }
+  const divisionWindows = new Map<string, DivisionWindow>();
+  for (const d of allDivisions) {
+    divisionWindows.set(d.name, {
+      startMin: hhmmToMinutes(d.window_start),
+      endMin: hhmmToMinutes(d.window_end),
+    });
+  }
+  const sc = (tournament.schedule_config ?? {}) as {
+    matchups?: MatchupConstraint[];
+    windows?: Record<string, string[]>;
+    dayStages?: Record<string, "pool" | "bracket">;
+    dayGrids?: Record<string, { start?: string; windows?: number }>;
+    fieldPins?: Record<string, string>;
+  };
+  const teamIds = new Set(allTeams.map((t) => t.id));
+  const valid = (sc.matchups ?? []).filter(
+    (m) => m.a && m.b && m.a !== m.b && teamIds.has(m.a) && teamIds.has(m.b)
+  );
+  const separations = new Map<string, Set<string>>();
+  const link = (x: string, y: string) => {
+    if (!separations.has(x)) separations.set(x, new Set());
+    separations.get(x)!.add(y);
+  };
+  for (const m of valid) {
+    if (m.type === "separate") {
+      link(m.a, m.b);
+      link(m.b, m.a);
+    }
+  }
+  const windowDivisions = new Map<string, string[]>(Object.entries(sc.windows ?? {}));
+  const dayStages = new Map<string, "pool" | "bracket">(Object.entries(sc.dayStages ?? {}));
+  const dayGrids = new Map<string, { startMin: number; windows: number }>();
+  for (const [day, g] of Object.entries(sc.dayGrids ?? {})) {
+    const startMin = hhmmToMinutes(g.start ?? null);
+    const windows = Number(g.windows);
+    if (startMin != null && Number.isFinite(windows) && windows > 0) {
+      dayGrids.set(day, { startMin, windows });
+    }
+  }
+  const fieldPins = new Map<string, string>(Object.entries(sc.fieldPins ?? {}));
+
+  // Reconstruct planned games from the current rows — bracket keys must match
+  // the pin keys, pool games use their id (they can't be pinned).
+  const divName = new Map(allDivisions.map((d) => [d.id, d.name]));
+  type Planned = ConstrainedGame & { id: string };
+  const planned: Planned[] = allGames.map((g) => ({
+    id: g.id,
+    key:
+      g.stage === "bracket"
+        ? `${g.division_id}-bracket-r${g.round}-g${(g.bracket_pos ?? 0) + 1}`
+        : g.id,
+    stage: g.stage === "bracket" ? "bracket" : "pool",
+    round: g.round,
+    pos: g.bracket_pos ?? undefined,
+    bracketSlot: g.bracket_slot ?? undefined,
+    homeTeamId: g.home_team_id,
+    awayTeamId: g.away_team_id,
+    homeSeed: g.home_seed,
+    awaySeed: g.away_seed,
+    divisionId: g.division_id,
+    divisionName: g.division_id ? divName.get(g.division_id) : undefined,
+  }));
+
+  const scheduled = assignSchedule(planned, eligibleFields, {
+    slot,
+    teamConstraints,
+    divisionWindows,
+    separations,
+    windowDivisions,
+    dayStages,
+    dayGrids,
+    fieldPins,
+  });
+
+  let updated = 0;
+  for (const s of scheduled) {
+    await supabase
+      .from("games")
+      .update({ field_id: s.fieldId, scheduled_at: s.scheduledAt })
+      .eq("id", s.id);
+    updated++;
+  }
+  return updated;
 }
 
 /**

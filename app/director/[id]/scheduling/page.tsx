@@ -14,7 +14,7 @@ import {
   saveGameWindows,
   saveDayStages,
   saveDayGrids,
-  setGameField,
+  setBracketFieldPin,
   saveMinPoolGames,
   addExtraGame,
   removeExtraGame,
@@ -41,25 +41,39 @@ export default async function SchedulingPage({
     supabase.from("fields").select("*").eq("tournament_id", id).order("name"),
     supabase
       .from("games")
-      .select("id,home_team_id,away_team_id,scheduled_at,field_id,stage,round,bracket_slot,division_id")
+      .select(
+        "id,home_team_id,away_team_id,home_seed,away_seed,scheduled_at,field_id,stage,round,bracket_pos,bracket_slot,division_id"
+      )
       .eq("tournament_id", id),
   ]);
   const divList = divisions ?? [];
   const teamList = teams ?? [];
   const fieldList = fields ?? [];
   const teamName = new Map(teamList.map((t) => [t.id, t.name]));
-  const divNameById = new Map(divList.map((d) => [d.id, d.name]));
 
-  // Championship game per division = the final (highest bracket round).
+  // Bracket games, grouped by division for manual field assignment. The pin key
+  // matches the engine's stable game key so it survives regeneration.
   const bracketGames = (games ?? []).filter((g) => g.stage === "bracket");
-  const maxRoundByDiv = new Map<string, number>();
-  for (const g of bracketGames) {
-    const k = g.division_id ?? "_";
-    maxRoundByDiv.set(k, Math.max(maxRoundByDiv.get(k) ?? 0, g.round ?? 0));
-  }
-  const championshipGames = bracketGames.filter(
-    (g) => (g.round ?? 0) === maxRoundByDiv.get(g.division_id ?? "_")
-  );
+  const fieldPins =
+    ((tournament.schedule_config ?? {}) as { fieldPins?: Record<string, string> }).fieldPins ?? {};
+  const pinKey = (g: { division_id: string | null; round: number; bracket_pos: number | null }) =>
+    `${g.division_id}-bracket-r${g.round}-g${(g.bracket_pos ?? 0) + 1}`;
+  const bracketFieldSections = [
+    ...divList.map((d) => ({
+      id: d.id,
+      name: d.name as string | undefined,
+      games: bracketGames
+        .filter((g) => g.division_id === d.id)
+        .sort((a, b) => a.round - b.round || (a.bracket_pos ?? 0) - (b.bracket_pos ?? 0)),
+    })),
+    {
+      id: "_none",
+      name: undefined,
+      games: bracketGames
+        .filter((g) => !g.division_id)
+        .sort((a, b) => a.round - b.round || (a.bracket_pos ?? 0) - (b.bracket_pos ?? 0)),
+    },
+  ].filter((s) => s.games.length > 0);
 
   // Pool-game counts per team + the minimum-games guarantee.
   const poolCountByTeam = new Map<string, number>();
@@ -671,44 +685,62 @@ export default async function SchedulingPage({
         </>
       )}
 
-      {/* 6 · Championship fields */}
-      {championshipGames.length > 0 && (
+      {/* 6 · Bracket field assignments */}
+      {bracketFieldSections.length > 0 && (
         <>
-          <Eyebrow className="mt-7 mb-3">Championship fields</Eyebrow>
+          <Eyebrow className="mt-7 mb-3">Bracket field assignments</Eyebrow>
           <p className="-mt-1 mb-3 text-[12px] text-muted">
-            Pin the field for each division&rsquo;s final. &ldquo;Auto&rdquo; lets the
-            scheduler place it.
+            Pin any bracket game to a field — the rest of the schedule re-flows around it
+            automatically. Leave on &ldquo;Auto&rdquo; to let the scheduler choose.
           </p>
-          <div className="flex flex-col gap-2">
-            {championshipGames.map((g) => (
-              <Card key={g.id}>
-                <form action={setGameField} className="flex flex-col gap-3">
-                  <input type="hidden" name="tournament_id" value={id} />
-                  <input type="hidden" name="game_id" value={g.id} />
-                  <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-bold">
-                      {g.division_id ? divNameById.get(g.division_id) ?? "" : "Championship"}
-                      {" · "}
-                      {g.bracket_slot ?? "Final"}
-                    </span>
-                    <div className="w-40 shrink-0">
-                      <select
-                        name="field_id"
-                        defaultValue={g.field_id ?? ""}
-                        className={inputClass}
-                      >
-                        <option value="">Auto-assign</option>
-                        {fieldList.map((f) => (
-                          <option key={f.id} value={f.id}>
-                            {f.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+          <div className="flex flex-col gap-4">
+            {bracketFieldSections.map((sec) => (
+              <div key={sec.id}>
+                {sec.name && (
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted">
+                    {sec.name}
                   </div>
-                  <SaveButton savedLabel="Field set ✓">Set championship field</SaveButton>
-                </form>
-              </Card>
+                )}
+                <div className="flex flex-col gap-2">
+                  {sec.games.map((g) => {
+                    const key = pinKey(g);
+                    const current = fieldPins[key] ?? g.field_id ?? "";
+                    const matchup =
+                      g.home_team_id || g.away_team_id
+                        ? `${teamName.get(g.home_team_id ?? "") ?? "TBD"} v ${teamName.get(g.away_team_id ?? "") ?? "TBD"}`
+                        : g.home_seed && g.away_seed
+                          ? `#${g.home_seed} v #${g.away_seed}`
+                          : "TBD";
+                    return (
+                      <Card key={g.id}>
+                        <form action={setBracketFieldPin} className="flex flex-col gap-3">
+                          <input type="hidden" name="tournament_id" value={id} />
+                          <input type="hidden" name="game_key" value={key} />
+                          <div className="flex items-center gap-2">
+                            <span className="min-w-0 flex-1 truncate text-[13px] font-bold">
+                              {g.bracket_slot ?? `Round ${g.round}`}
+                              <span className="ml-1 font-medium text-muted">· {matchup}</span>
+                            </span>
+                            <div className="w-40 shrink-0">
+                              <select name="field_id" defaultValue={current} className={inputClass}>
+                                <option value="">Auto</option>
+                                {fieldList.map((f) => (
+                                  <option key={f.id} value={f.id}>
+                                    {f.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <SaveButton savedLabel="Pinned · schedule updated ✓">
+                            Pin field &amp; re-flow
+                          </SaveButton>
+                        </form>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </div>
         </>

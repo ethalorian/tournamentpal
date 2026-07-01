@@ -213,6 +213,19 @@ test("assignSchedule: pool day rejects bracket games", () => {
   assert.ok(bracket.scheduledAt && !bracket.scheduledAt.startsWith("2026-07-01"), "bracket off the pool day");
 });
 
+test("assignSchedule: a pinned game is forced onto its field", () => {
+  const games: ConstrainedGame[] = [
+    { key: "final", stage: "bracket", round: 1, homeTeamId: "t1", awayTeamId: "t2", divisionId: null },
+  ];
+  const out = assignSchedule(games, F2, {
+    slot: SLOT,
+    teamConstraints: new Map(),
+    divisionWindows: new Map(),
+    fieldPins: new Map([["final", "f2"]]),
+  });
+  assert.equal(out[0].fieldId, "f2", "pinned game uses its assigned field");
+});
+
 test("assignSchedule: separated teams never share a time slot", () => {
   const games: ConstrainedGame[] = [
     { key: "a", stage: "pool", round: 1, homeTeamId: "t1", awayTeamId: "t2", divisionId: null },
