@@ -186,6 +186,11 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
           {divisions.map((d) => d.name).join(" · ")}
         </p>
       )}
+
+      <p className="mt-4 text-center text-[11px] text-muted">
+        <span className="font-bold text-ink">Tournament<span className="text-blue">Pal</span></span>{" "}
+        · private beta
+      </p>
     </FollowerShell>
   );
 }
