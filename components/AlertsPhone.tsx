@@ -23,8 +23,8 @@ export function AlertsPhone({
       </div>
       <p className="mt-1 text-[12px] text-muted">
         {followingCount > 0
-          ? `Get a text the moment any of your ${followingCount} team${followingCount === 1 ? "" : "s"} has a score, a weather hold, or a director note.`
-          : "Follow a team, then get a text on every score."}
+          ? `Get the director's texts — scores, weather holds and updates — for your ${followingCount} team${followingCount === 1 ? "" : "s"}.`
+          : "Follow a team, then get the director's text alerts."}
       </p>
       <form action={setFollowerPhone} className="mt-3 flex items-end gap-2">
         <input type="hidden" name="tournament_id" value={tournamentId} />

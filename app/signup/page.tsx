@@ -22,7 +22,7 @@ export default async function SignupPage({
         </h1>
         <p className="mt-2 text-[14px] text-muted">
           {role === "follower"
-            ? "Create a free account to follow teams and get a text on every score."
+            ? "Create a free account to follow teams and get text alerts from the director."
             : "Create an account and build a tournament from a preset in minutes."}
         </p>
       </div>

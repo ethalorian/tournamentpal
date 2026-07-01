@@ -2,15 +2,22 @@ import Link from "next/link";
 import { loadOwnedTournament } from "@/lib/tournament";
 import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { TournamentNav } from "@/components/TournamentNav";
-import { Badge, Eyebrow, Stat, Card, Button, EmptyState } from "@/components/ui";
-import { deleteTournament } from "@/app/director/actions";
+import { Badge, Eyebrow, Stat, Card, Button, EmptyState, inputClass } from "@/components/ui";
+import { deleteTournament, announceToFollowers } from "@/app/director/actions";
 
 export const dynamic = "force-dynamic";
 
 const STATUS_TONE = { draft: "muted", published: "blue", live: "accent", completed: "muted" } as const;
 
-export default async function TournamentOverview({ params }: { params: Promise<{ id: string }> }) {
+export default async function TournamentOverview({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ announced?: string }>;
+}) {
   const { id } = await params;
+  const { announced } = await searchParams;
   const { tournament, supabase } = await loadOwnedTournament(id);
 
   const [{ data: teams }, { data: games }] = await Promise.all([
@@ -63,6 +70,32 @@ export default async function TournamentOverview({ params }: { params: Promise<{
         </Card>
       ) : (
         <>
+          {/* Manual announce — texting is deliberate, never automatic. */}
+          {announced && (
+            <p className="mt-4 rounded-xl bg-success/10 px-4 py-3 text-[13px] font-semibold text-success">
+              Sent to followers.
+            </p>
+          )}
+          <Card className="mt-4">
+            <div className="display text-[15px]">Text your followers</div>
+            <p className="mt-1 text-[12px] text-muted">
+              Nothing goes out automatically — send an update only when you want to.
+            </p>
+            <form action={announceToFollowers} className="mt-3 flex flex-col gap-2">
+              <input type="hidden" name="tournament_id" value={id} />
+              <textarea
+                name="body"
+                rows={2}
+                required
+                className={`${inputClass} resize-none`}
+                defaultValue="We're live! Follow your team for score alerts."
+              />
+              <Button type="submit" variant="ink" className="w-full">
+                Send to followers
+              </Button>
+            </form>
+          </Card>
+
           <Link
             href={`/director/${id}/hold`}
             className={`mt-4 flex items-center justify-between rounded-2xl p-4 ${

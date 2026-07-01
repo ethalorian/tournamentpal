@@ -159,16 +159,36 @@ export async function publishTournament(formData: FormData) {
     .eq("tournament_id", tournamentId);
   if (!count) await regenerateSchedule(supabase, t);
 
+  // Publishing only makes the event public. Notifying followers is a separate,
+  // deliberate action (see announceToFollowers) — never automatic.
   await supabase.from("tournaments").update({ status: "published" }).eq("id", tournamentId);
-  await notifyFollowers({
-    tournamentId,
-    type: "published",
-    title: `${t.name} is live`,
-    body: "The bracket is published. Follow your team for score alerts.",
-  });
 
   revalidatePath(`/director/${tournamentId}`);
   redirect(`/director/${tournamentId}`);
+}
+
+/** Manually text/push followers — sent only when the director chooses to. */
+export async function announceToFollowers(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+  if (!body) return;
+
+  const { data: t } = await supabase
+    .from("tournaments")
+    .select("name")
+    .eq("id", tournamentId)
+    .single();
+
+  await notifyFollowers({
+    tournamentId,
+    type: "broadcast",
+    title: t?.name ?? "Tournament update",
+    body,
+  });
+
+  revalidatePath(`/director/${tournamentId}`);
+  redirect(`/director/${tournamentId}?announced=1`);
 }
 
 export async function deleteTournament(formData: FormData) {
@@ -264,12 +284,6 @@ export async function postScore(formData: FormData) {
   const isCorrection = formData.get("correction") === "1";
   const returnTo = String(formData.get("return_to") ?? `/director/${tournamentId}/scores`);
 
-  const { data: game } = await supabase
-    .from("games")
-    .select("*, home:home_team_id(name), away:away_team_id(name)")
-    .eq("id", gameId)
-    .single();
-
   await supabase
     .from("games")
     .update({ home_score: home, away_score: away, status: "final" })
@@ -278,22 +292,15 @@ export async function postScore(formData: FormData) {
   // Winners flow into later bracket rounds.
   await advanceBracket(supabase, tournamentId);
 
-  // First time the tournament goes "live", flip its status.
+  // First time a score is posted, flip the event to "live". Followers are NOT
+  // texted automatically — the director sends updates manually (announceToFollowers).
   await supabase
     .from("tournaments")
     .update({ status: "live" })
     .eq("id", tournamentId)
     .eq("status", "published");
 
-  const homeName = (game as { home?: { name?: string } } | null)?.home?.name ?? "Home";
-  const awayName = (game as { away?: { name?: string } } | null)?.away?.name ?? "Away";
-  await notifyFollowers({
-    tournamentId,
-    type: "score_posted",
-    title: isCorrection ? "Score corrected" : "Final",
-    body: `${homeName} ${home}, ${awayName} ${away}`,
-    payload: { gameId },
-  });
+  void isCorrection;
 
   revalidatePath(`/director/${tournamentId}/scores`);
   revalidatePath(`/director/${tournamentId}/standings`);

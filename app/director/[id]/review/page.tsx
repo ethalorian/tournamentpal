@@ -2,7 +2,7 @@ import Link from "next/link";
 import { loadOwnedTournament } from "@/lib/tournament";
 import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { Stepper } from "@/components/Stepper";
-import { Button, Eyebrow, Stat, Card, Badge } from "@/components/ui";
+import { Button, Eyebrow, Stat, Card } from "@/components/ui";
 import { getPreset } from "@/lib/engine/presets";
 import {
   generateScheduleAction,
@@ -107,12 +107,12 @@ export default async function ReviewStep({ params }: { params: Promise<{ id: str
           <form action={publishTournament} className="mt-3">
             <input type="hidden" name="tournament_id" value={id} />
             <Button type="submit" className="w-full">
-              Publish — texts every follower
+              Publish — make it public
             </Button>
           </form>
           <p className="mt-2 text-center text-[11px] text-muted">
-            Publishing makes the event public.{" "}
-            <Badge tone="muted">SMS stubbed</Badge>
+            Publishing opens the public follower page. You choose when to text
+            followers afterward.
           </p>
         </>
       )}

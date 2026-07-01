@@ -21,7 +21,7 @@ export default async function FormatStep({ params }: { params: Promise<{ id: str
 
   return (
     <DirectorShell showTabs={false}>
-      <BackLink href={`/director/${id}/fields`} label="Fields" />
+      <BackLink href={`/director/${id}/fields?setup=1`} label="Fields" />
       <div className="mt-4">
         <Stepper step={4} total={5} label="Format" />
       </div>

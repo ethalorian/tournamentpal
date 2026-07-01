@@ -8,7 +8,7 @@ type Tab = { href: string; label: string; icon: "home" | "plus" | "user" };
 const ICONS: Record<Tab["icon"], (active: boolean) => React.ReactNode> = {
   home: (a) => (
     <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
-      <path d="M3 9 L10 3 L17 9 V17 H3 Z" stroke={a ? "#facc15" : "#7a7a7a"} strokeWidth="2" strokeLinejoin="round" />
+      <path d="M3 9 L10 3 L17 9 V17 H3 Z" transform="matrix(1 0 0 -1 0 20)" stroke={a ? "#facc15" : "#7a7a7a"} strokeWidth="2" strokeLinejoin="round" />
     </svg>
   ),
   plus: (a) => (

@@ -40,7 +40,7 @@ export default async function EnterScorePage({
         {isCorrection ? "Correct the score" : "Enter score"}
       </h1>
       <p className="mt-1.5 text-[13px] text-muted">
-        Tap to set the runs, then post. {isCorrection ? "Saving re-notifies followers and updates standings." : "Followers get a text the moment you post."}
+        Tap to set the runs, then post. {isCorrection ? "Saving updates standings and the bracket." : "This records the final and updates standings — followers aren't texted automatically."}
       </p>
 
       <ScoreEntry

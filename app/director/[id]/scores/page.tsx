@@ -36,7 +36,7 @@ export default async function ScoresPage({
 
       {posted && (
         <p className="mt-4 rounded-xl bg-success/10 px-4 py-3 text-[13px] font-semibold text-success">
-          Score posted — followers notified.
+          Score posted. Standings updated.
         </p>
       )}
 

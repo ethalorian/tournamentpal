@@ -423,9 +423,9 @@ export type Database = {
           manager_is_me: boolean
         }[]
       }
-      follower_phones: { Args: { t_id: string }; Returns: string[] }
+      follower_phones: { Args: { t_id: string; p_category: string }; Returns: string[] }
       follower_push_subs: {
-        Args: { t_id: string }
+        Args: { t_id: string; p_category: string }
         Returns: { endpoint: string; p256dh: string; auth: string }[]
       }
       delete_push_subscription: { Args: { p_endpoint: string }; Returns: undefined }

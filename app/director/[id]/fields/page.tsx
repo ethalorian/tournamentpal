@@ -9,9 +9,16 @@ import { addField } from "@/app/director/actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function FieldsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function FieldsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ setup?: string }>;
+}) {
   const { id } = await params;
-  const { tournament, supabase } = await loadOwnedTournament(id);
+  const { setup } = await searchParams;
+  const { supabase } = await loadOwnedTournament(id);
 
   const [{ data: fields }, { data: sites }, { data: divisions }] = await Promise.all([
     supabase.from("fields").select("*").eq("tournament_id", id).order("name"),
@@ -22,9 +29,10 @@ export default async function FieldsPage({ params }: { params: Promise<{ id: str
   const fieldList = fields ?? [];
   const divList = divisions ?? [];
 
-  // During initial setup (draft) Fields is a wizard step; afterwards it's a
-  // management screen reached from the tournament nav.
-  const isWizard = tournament.status === "draft";
+  // Wizard chrome only while explicitly in the setup flow (?setup=1). Reaching
+  // Fields from the tournament nav shows the management screen instead — even
+  // for a draft.
+  const isWizard = setup === "1";
 
   const body = (
     <>

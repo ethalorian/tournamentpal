@@ -32,7 +32,7 @@ export default async function ScoreQueue({
     <ScoreShell>
       <BackLink href="/score" label="Events" />
       <h1 className="display mt-3 text-[24px]">{tournament.name}</h1>
-      <p className="mt-1 text-[12px] text-muted">Post finals — followers get notified.</p>
+      <p className="mt-1 text-[12px] text-muted">Post finals here. Texting followers is the director&apos;s call.</p>
 
       {posted && (
         <p className="mt-4 rounded-xl bg-success/10 px-4 py-3 text-[13px] font-semibold text-success">

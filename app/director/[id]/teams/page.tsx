@@ -94,7 +94,7 @@ export default async function TeamsStep({ params }: { params: Promise<{ id: stri
       )}
 
       <Link
-        href={`/director/${id}/fields`}
+        href={`/director/${id}/fields?setup=1`}
         className="btn-accent mt-7 flex h-[54px] items-center justify-center rounded-2xl text-[16px]"
         aria-disabled={teamList.length < 3}
         style={teamList.length < 3 ? { opacity: 0.5, pointerEvents: "none" } : undefined}
