@@ -42,6 +42,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_prefs: {
+        Row: {
+          user_id: string
+          channel_sms: boolean
+          channel_push: boolean
+          cat_updates: boolean
+          cat_weather: boolean
+          cat_concessions: boolean
+          cat_scores: boolean
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          channel_sms?: boolean
+          channel_push?: boolean
+          cat_updates?: boolean
+          cat_weather?: boolean
+          cat_concessions?: boolean
+          cat_scores?: boolean
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          channel_sms?: boolean
+          channel_push?: boolean
+          cat_updates?: boolean
+          cat_weather?: boolean
+          cat_concessions?: boolean
+          cat_scores?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: { id: string; user_id: string; endpoint: string; p256dh: string; auth: string; created_at: string }
         Insert: { id?: string; user_id: string; endpoint: string; p256dh: string; auth: string; created_at?: string }

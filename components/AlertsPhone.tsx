@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { setFollowerPhone } from "@/app/t/actions";
 import { inputClass } from "@/components/ui";
 
@@ -40,6 +41,9 @@ export function AlertsPhone({
           {hasPhone ? "Update" : "Save"}
         </button>
       </form>
+      <Link href={`/alerts?next=/t/${tournamentId}`} className="mt-3 inline-block text-[12px] font-bold text-ink">
+        Manage alert preferences →
+      </Link>
     </div>
   );
 }

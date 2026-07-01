@@ -42,9 +42,13 @@ async function sendWebPush(
   supabase: Awaited<ReturnType<typeof createClient>>,
   tournamentId: string,
   title: string,
-  body: string
+  body: string,
+  category: string
 ): Promise<number> {
-  const { data: subs } = await supabase.rpc("follower_push_subs", { t_id: tournamentId });
+  const { data: subs } = await supabase.rpc("follower_push_subs", {
+    t_id: tournamentId,
+    p_category: category,
+  });
   const list = (subs ?? []) as { endpoint: string; p256dh: string; auth: string }[];
   const payload = JSON.stringify({ title, body, url: `/t/${tournamentId}`, tag: tournamentId });
 
@@ -88,12 +92,27 @@ async function sendSms(to: string, message: string): Promise<boolean> {
   return true;
 }
 
+function categoryOf(type: NotifyInput["type"]): string {
+  switch (type) {
+    case "weather_hold":
+      return "weather";
+    case "concessions":
+      return "concessions";
+    case "score_posted":
+      return "scores";
+    default:
+      return "updates";
+  }
+}
+
 export async function notifyFollowers(input: NotifyInput) {
   const supabase = await createClient();
+  const category = categoryOf(input.type);
 
-  // Recipient phone numbers (authorized via the SECURITY DEFINER RPC).
+  // Recipients who opted into SMS for this category (authorized via RPC).
   const { data: phones } = await supabase.rpc("follower_phones", {
     t_id: input.tournamentId,
+    p_category: category,
   });
   const recipients = (phones ?? []) as string[];
   const message = `${input.title} — ${input.body}`;
@@ -110,7 +129,7 @@ export async function notifyFollowers(input: NotifyInput) {
 
   // Browser Web Push to installed-PWA / subscribed followers.
   const pushed = pushReady
-    ? await sendWebPush(supabase, input.tournamentId, input.title, input.body)
+    ? await sendWebPush(supabase, input.tournamentId, input.title, input.body, category)
     : 0;
 
   const smsCount = twilioReady ? sent : recipients.length;
