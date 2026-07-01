@@ -3,6 +3,7 @@ import { loadOwnedTournament } from "@/lib/tournament";
 import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { TournamentNav } from "@/components/TournamentNav";
 import { Badge, Eyebrow, Stat, Card, Button, EmptyState, inputClass } from "@/components/ui";
+import { CopyButton } from "@/components/CopyButton";
 import { deleteTournament, announceToFollowers } from "@/app/director/actions";
 
 export const dynamic = "force-dynamic";
@@ -150,23 +151,25 @@ export default async function TournamentOverview({
 
       {/* Share + danger */}
       <Card className="mt-6">
-        <div className="text-[12px] font-bold uppercase tracking-wide text-muted">Follower link</div>
-        <div className="mt-2 truncate rounded-lg bg-haze px-3 py-2 font-mono text-[12px]">/t/{id}</div>
+        <div className="text-[12px] font-bold uppercase tracking-wide text-muted">Follower page</div>
         {isDraft ? (
           <p className="mt-2 text-[11px] text-muted">
             Drafts are private. Publish to open the public follower page and start alerts.
           </p>
         ) : (
           <>
-            <Link
-              href={`/t/${id}`}
-              className="btn-ink mt-3 flex h-11 items-center justify-center rounded-xl text-[13px]"
-            >
-              Open public follower page
-            </Link>
-            <p className="mt-1.5 text-[11px] text-muted">
-              Share this so families can follow teams and get score alerts.
+            <p className="mt-1.5 text-[12px] text-muted">
+              A public webpage anyone can open — share the link so families follow teams and get your alerts.
             </p>
+            <div className="mt-3 flex items-center gap-2">
+              <Link
+                href={`/t/${tournament.slug ?? id}`}
+                className="btn-ink flex h-11 flex-1 items-center justify-center rounded-xl text-[13px]"
+              >
+                Open the page
+              </Link>
+              <CopyButton path={`/t/${tournament.slug ?? id}`} label="Copy link" />
+            </div>
           </>
         )}
       </Card>

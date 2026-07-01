@@ -29,6 +29,10 @@ export default async function ConcessionsManage({
     .eq("tournament_id", id)
     .order("sort");
   const list = items ?? [];
+  const existing = new Set(list.map((i) => i.name.toLowerCase()));
+
+  const { data: catalog } = await supabase.from("concession_catalog").select("*").order("sort");
+  const quickAdd = (catalog ?? []).filter((c) => !existing.has(c.name.toLowerCase()));
 
   return (
     <DirectorShell>
@@ -98,8 +102,32 @@ export default async function ConcessionsManage({
         </div>
       )}
 
+      {quickAdd.length > 0 && (
+        <Card className="mt-4">
+          <div className="display text-[15px]">Quick add</div>
+          <p className="mt-1 text-[12px] text-muted">Tap a common item to add it — tweak the price anytime.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {quickAdd.map((c) => (
+              <form key={c.id} action={addConcession}>
+                <input type="hidden" name="tournament_id" value={id} />
+                <input type="hidden" name="name" value={c.name} />
+                <input type="hidden" name="price" value={(c.default_price_cents / 100).toFixed(2)} />
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 rounded-full border-2 border-ink px-3 py-1.5 text-[12px] font-bold active:scale-95"
+                >
+                  <span className="text-[15px] leading-none">+</span>
+                  {c.name}
+                  <span className="text-muted">{price(c.default_price_cents)}</span>
+                </button>
+              </form>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <Card className="mt-4">
-        <div className="display text-[15px]">Add item</div>
+        <div className="display text-[15px]">Add a custom item</div>
         <form action={addConcession} className="mt-3 flex items-end gap-2">
           <input type="hidden" name="tournament_id" value={id} />
           <div className="flex-1">

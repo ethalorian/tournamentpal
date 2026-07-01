@@ -17,11 +17,12 @@ export default async function PublicSchedule({
   const { id } = await params;
   const { view: viewParam, team: teamParam } = await searchParams;
   const { tournament, supabase } = await loadPublicTournament(id);
+  const tid = tournament.id;
 
   const [{ data: teams }, { data: games }, { data: fields }] = await Promise.all([
-    supabase.from("teams").select("id,name").eq("tournament_id", id).order("name"),
-    supabase.from("games").select("*").eq("tournament_id", id).order("scheduled_at"),
-    supabase.from("fields").select("id,name").eq("tournament_id", id),
+    supabase.from("teams").select("id,name").eq("tournament_id", tid).order("name"),
+    supabase.from("games").select("*").eq("tournament_id", tid).order("scheduled_at"),
+    supabase.from("fields").select("id,name").eq("tournament_id", tid),
   ]);
   const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
   const fieldName = new Map((fields ?? []).map((f) => [f.id, f.name]));

@@ -13,16 +13,17 @@ export const dynamic = "force-dynamic";
 export default async function FollowerHome({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { tournament, supabase, user } = await loadPublicTournament(id);
+  const tid = tournament.id; // real UUID; `id` (route) may be a slug
 
   const [{ data: teams }, { data: games }, { data: divisions }, follows, { data: sponsors }, profileRes] =
     await Promise.all([
-      supabase.from("teams").select("id,name,division_id").eq("tournament_id", id).order("name"),
-      supabase.from("games").select("*").eq("tournament_id", id).order("scheduled_at"),
-      supabase.from("divisions").select("*").eq("tournament_id", id).order("sort"),
+      supabase.from("teams").select("id,name,division_id").eq("tournament_id", tid).order("name"),
+      supabase.from("games").select("*").eq("tournament_id", tid).order("scheduled_at"),
+      supabase.from("divisions").select("*").eq("tournament_id", tid).order("sort"),
       user
-        ? supabase.from("follows").select("team_id").eq("follower_id", user.id).eq("tournament_id", id)
+        ? supabase.from("follows").select("team_id").eq("follower_id", user.id).eq("tournament_id", tid)
         : Promise.resolve({ data: [] as { team_id: string }[] }),
-      supabase.from("sponsors").select("id,name,url,logo_url,tier").eq("tournament_id", id).order("sort"),
+      supabase.from("sponsors").select("id,name,url,logo_url,tier").eq("tournament_id", tid).order("sort"),
       user
         ? supabase.from("profiles").select("phone").eq("id", user.id).maybeSingle()
         : Promise.resolve({ data: null as { phone: string | null } | null }),
@@ -123,7 +124,7 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
               <span className="text-[14px] font-bold">{t.name}</span>
             </Link>
             <FollowButton
-              tournamentId={id}
+              tournamentId={tid}
               teamId={t.id}
               isFollowing={followed.has(t.id)}
               returnTo={`/t/${id}`}
@@ -136,7 +137,7 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
 
       {user && (
         <>
-          <AlertsPhone tournamentId={id} phone={profileRes?.data?.phone ?? null} followingCount={followed.size} />
+          <AlertsPhone tournamentId={tid} phone={profileRes?.data?.phone ?? null} followingCount={followed.size} />
           <PushToggle />
         </>
       )}

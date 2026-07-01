@@ -18,7 +18,7 @@ export default async function Discover({
   // RLS returns only published/live/completed tournaments to anonymous visitors.
   let query = supabase
     .from("tournaments")
-    .select("id,name,location,sport,start_date,end_date,status")
+    .select("id,slug,name,location,sport,start_date,end_date,status")
     .order("start_date", { ascending: false })
     .limit(60);
   if (q && q.trim()) query = query.or(`name.ilike.%${q.trim()}%,location.ilike.%${q.trim()}%`);
@@ -78,7 +78,7 @@ export default async function Discover({
         ) : (
           <div className="flex flex-col gap-3 md:grid md:grid-cols-2">
             {list.map((t) => (
-              <Link key={t.id} href={`/t/${t.id}`} className="block rounded-2xl border border-faint p-4">
+              <Link key={t.id} href={`/t/${t.slug ?? t.id}`} className="block rounded-2xl border border-faint p-4">
                 <div className="flex items-start justify-between">
                   <div className="font-extrabold text-[16px]">{t.name}</div>
                   <Badge tone={STATUS_TONE[t.status as keyof typeof STATUS_TONE] ?? "muted"}>{t.status}</Badge>

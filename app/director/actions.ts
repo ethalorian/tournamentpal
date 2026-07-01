@@ -40,11 +40,15 @@ export async function createTournamentDraft(formData: FormData) {
   const hasCoords = Number.isFinite(clat) && Number.isFinite(clng);
   const geo = !hasCoords && location ? await geocodePlace(location) : null;
 
+  // Friendly, globally-unique URL slug (e.g. "the-slam-2026").
+  const { data: slug } = await supabase.rpc("generate_tournament_slug", { base: name });
+
   const { data: tournament, error } = await supabase
     .from("tournaments")
     .insert({
       director_id: user.id,
       name,
+      slug: slug ?? null,
       sport: sport === "baseball" ? "baseball" : "softball",
       location: (geo?.address ?? location) || null,
       lat: hasCoords ? clat : geo?.lat ?? null,

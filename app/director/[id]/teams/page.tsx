@@ -5,7 +5,8 @@ import { TournamentNav } from "@/components/TournamentNav";
 import { Stepper } from "@/components/Stepper";
 import { Field, inputClass, Button, EmptyState, Eyebrow, Badge } from "@/components/ui";
 import { CopyButton } from "@/components/CopyButton";
-import { addTeams, removeTeam, toggleRegistration } from "@/app/director/actions";
+import { RemoveTeamButton } from "@/components/RemoveTeamButton";
+import { addTeams, toggleRegistration } from "@/app/director/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -116,13 +117,12 @@ export default async function TeamsStep({
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {!t.manager_id && <CopyButton path={`/claim/${t.id}`} />}
-                  <form action={removeTeam}>
-                    <input type="hidden" name="team_id" value={t.id} />
-                    <input type="hidden" name="tournament_id" value={id} />
-                    <button type="submit" className="text-[12px] font-bold text-muted hover:text-danger">
-                      Remove
-                    </button>
-                  </form>
+                  <RemoveTeamButton
+                    teamId={t.id}
+                    tournamentId={id}
+                    teamName={t.name}
+                    warn={tournament.status !== "draft"}
+                  />
                 </div>
               </div>
               {!t.manager_id && (

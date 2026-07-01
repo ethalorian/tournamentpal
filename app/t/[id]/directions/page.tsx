@@ -16,8 +16,8 @@ export default async function DirectionsPage({ params }: { params: Promise<{ id:
   const { tournament, supabase } = await loadPublicTournament(id);
 
   const [{ data: sites }, { data: fields }] = await Promise.all([
-    supabase.from("sites").select("*").eq("tournament_id", id).order("name"),
-    supabase.from("fields").select("*").eq("tournament_id", id).order("name"),
+    supabase.from("sites").select("*").eq("tournament_id", tournament.id).order("name"),
+    supabase.from("fields").select("*").eq("tournament_id", tournament.id).order("name"),
   ]);
   const fieldList = fields ?? [];
   const siteList = sites ?? [];

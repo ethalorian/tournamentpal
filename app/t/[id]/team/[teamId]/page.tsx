@@ -19,21 +19,22 @@ export default async function TeamPage({
 }) {
   const { id, teamId } = await params;
   const { tournament, supabase, user } = await loadPublicTournament(id);
+  const tid = tournament.id; // real UUID; `id` (route) may be a slug
 
   const { data: team } = await supabase
     .from("teams")
     .select("*")
     .eq("id", teamId)
-    .eq("tournament_id", id)
+    .eq("tournament_id", tid)
     .single();
   if (!team) notFound();
 
   const [{ data: allTeams }, { data: games }, poolTeam, follow] = await Promise.all([
-    supabase.from("teams").select("id,name").eq("tournament_id", id),
+    supabase.from("teams").select("id,name").eq("tournament_id", tid),
     supabase
       .from("games")
       .select("*")
-      .eq("tournament_id", id)
+      .eq("tournament_id", tid)
       .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
       .order("scheduled_at"),
     supabase.from("pool_teams").select("pool_id").eq("team_id", teamId).maybeSingle(),
@@ -47,7 +48,7 @@ export default async function TeamPage({
   const isFollowing = Boolean(follow.data);
 
   const rules = (tournament.rules ?? undefined) as Rules | undefined;
-  const tables = await buildStandingsTables(supabase, id, rules);
+  const tables = await buildStandingsTables(supabase, tid, rules);
   const poolId = poolTeam.data?.pool_id ?? null;
   const myTable = poolId ? tables.find((t) => t.poolId === poolId) : tables[0];
 
@@ -57,7 +58,7 @@ export default async function TeamPage({
     : supabase
         .from("games")
         .select("home_team_id,away_team_id,home_score,away_score,status")
-        .eq("tournament_id", id)
+        .eq("tournament_id", tid)
         .eq("stage", "pool");
   const { data: poolGames } = await poolGamesQuery;
   const poolResults = (poolGames ?? []).map((g) => ({
@@ -95,7 +96,7 @@ export default async function TeamPage({
             {team.seed && <div className="text-[11px] font-semibold text-muted">Seed #{team.seed}</div>}
           </div>
         </div>
-        <FollowButton tournamentId={id} teamId={teamId} isFollowing={isFollowing} returnTo={`/t/${id}/team/${teamId}`} />
+        <FollowButton tournamentId={tid} teamId={teamId} isFollowing={isFollowing} returnTo={`/t/${id}/team/${teamId}`} />
       </div>
 
       <Eyebrow className="mb-3 mt-7">Games</Eyebrow>

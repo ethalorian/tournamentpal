@@ -16,7 +16,7 @@ export default async function FollowerConcessions({ params }: { params: Promise<
   const { data: items } = await supabase
     .from("concessions")
     .select("*")
-    .eq("tournament_id", id)
+    .eq("tournament_id", tournament.id)
     .order("sort");
   const list = items ?? [];
 

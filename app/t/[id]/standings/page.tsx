@@ -12,7 +12,7 @@ export default async function PublicStandings({ params }: { params: Promise<{ id
   const { id } = await params;
   const { tournament, supabase } = await loadPublicTournament(id);
   const rules = (tournament.rules ?? undefined) as Rules | undefined;
-  const tables = await buildStandingsTables(supabase, id, rules);
+  const tables = await buildStandingsTables(supabase, tournament.id, rules);
 
   const empty = tables.every((t) => t.rows.length === 0);
 

@@ -12,6 +12,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      concession_catalog: {
+        Row: { id: string; name: string; default_price_cents: number; sort: number }
+        Insert: { id?: string; name: string; default_price_cents?: number; sort?: number }
+        Update: { id?: string; name?: string; default_price_cents?: number; sort?: number }
+        Relationships: []
+      }
       concessions: {
         Row: {
           id: string
@@ -401,6 +407,7 @@ export type Database = {
           lat: number | null
           lng: number | null
           registration_open: boolean
+          slug: string | null
         }
         Insert: {
           created_at?: string
@@ -421,6 +428,7 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           registration_open?: boolean
+          slug?: string | null
         }
         Update: {
           created_at?: string
@@ -441,6 +449,7 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           registration_open?: boolean
+          slug?: string | null
         }
         Relationships: []
       }
@@ -471,6 +480,7 @@ export type Database = {
       is_member: { Args: { t_id: string }; Returns: boolean }
       can_score: { Args: { t_id: string }; Returns: boolean }
       register_team: { Args: { t_id: string; p_name: string }; Returns: string }
+      generate_tournament_slug: { Args: { base: string }; Returns: string }
       registration_info: {
         Args: { t_id: string }
         Returns: { tournament_name: string; sport: string; is_open: boolean; status: string }[]
