@@ -113,6 +113,78 @@ export async function addTeams(formData: FormData) {
   revalidatePath(`/director/${tournamentId}/teams`);
 }
 
+/**
+ * Add teams captured from a photo scan, each with its own division/age group.
+ * Rows arrive as index-aligned `name` / `division` fields. For each division
+ * label we fuzzy-match an existing division (case/spacing/punctuation-insensitive)
+ * and reuse it; only when there's no match do we create a new division. A blank
+ * division leaves the team unassigned ("No division").
+ */
+export async function addScannedTeams(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const names = formData.getAll("name").map((v) => String(v).trim());
+  const divisions = formData.getAll("division").map((v) => String(v).trim());
+  if (!tournamentId || names.length === 0) return;
+
+  // Load existing divisions so we can match before creating.
+  const { data: existing } = await supabase
+    .from("divisions")
+    .select("id, name, sort")
+    .eq("tournament_id", tournamentId);
+  const divs = existing ?? [];
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const byNorm = new Map(divs.map((d) => [norm(d.name), d.id]));
+  let maxSort = divs.reduce((m, d) => Math.max(m, d.sort ?? 0), -1);
+
+  // Resolve a division id for each row, creating new divisions on demand.
+  const resolved: (string | null)[] = [];
+  for (let i = 0; i < names.length; i++) {
+    const label = divisions[i] ?? "";
+    if (!label) {
+      resolved.push(null);
+      continue;
+    }
+    const key = norm(label);
+    let divId = byNorm.get(key) ?? null;
+    if (!divId) {
+      const { data: created } = await supabase
+        .from("divisions")
+        .insert({ tournament_id: tournamentId, name: label, sort: ++maxSort })
+        .select("id")
+        .single();
+      divId = created?.id ?? null;
+      if (divId) byNorm.set(key, divId);
+    }
+    resolved.push(divId);
+  }
+
+  const { count } = await supabase
+    .from("teams")
+    .select("*", { count: "exact", head: true })
+    .eq("tournament_id", tournamentId);
+  const base = count ?? 0;
+
+  const rows: {
+    tournament_id: string;
+    division_id: string | null;
+    name: string;
+    seed: number;
+  }[] = [];
+  for (let i = 0; i < names.length; i++) {
+    if (!names[i]) continue;
+    rows.push({
+      tournament_id: tournamentId,
+      division_id: resolved[i],
+      name: names[i],
+      seed: base + rows.length + 1,
+    });
+  }
+  if (rows.length > 0) await supabase.from("teams").insert(rows);
+
+  revalidatePath(`/director/${tournamentId}/teams`);
+}
+
 export async function removeTeam(formData: FormData) {
   const { supabase } = await client();
   const teamId = String(formData.get("team_id") ?? "");

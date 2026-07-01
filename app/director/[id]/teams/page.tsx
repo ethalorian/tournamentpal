@@ -7,7 +7,7 @@ import { Field, inputClass, Button, EmptyState, Eyebrow, Badge } from "@/compone
 import { CopyButton } from "@/components/CopyButton";
 import { RemoveTeamButton } from "@/components/RemoveTeamButton";
 import { ScanTeamsButton } from "@/components/ScanTeamsButton";
-import { addTeams, toggleRegistration } from "@/app/director/actions";
+import { addTeams } from "@/app/director/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -73,8 +73,11 @@ export default async function TeamsStep({
         </Button>
       </form>
 
-      {/* Prefill the textarea above from a screenshot (Claude vision). */}
-      <ScanTeamsButton targetId="teams-input" />
+      {/* Prefill teams from a screenshot (Claude vision), with per-team divisions. */}
+      <ScanTeamsButton
+        tournamentId={id}
+        divisions={divList.map((d) => ({ id: d.id, name: d.name }))}
+      />
 
       {/* Reuse from a past event */}
       <Link
@@ -87,34 +90,6 @@ export default async function TeamsStep({
         </div>
         <span className="text-[13px] font-bold text-ink">→</span>
       </Link>
-
-      {/* Self-serve registration link */}
-      <div className="mt-3 rounded-xl border border-faint p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[13px] font-bold">Registration link</div>
-            <div className="text-[11px] text-muted">
-              Let coaches add their own team.{" "}
-              <Badge tone={tournament.registration_open ? "success" : "muted"}>
-                {tournament.registration_open ? "Open" : "Closed"}
-              </Badge>
-            </div>
-          </div>
-          <form action={toggleRegistration}>
-            <input type="hidden" name="tournament_id" value={id} />
-            <input type="hidden" name="open" value={tournament.registration_open ? "0" : "1"} />
-            <button type="submit" className="display rounded-full border-2 border-ink px-3 py-1.5 text-[11px] tracking-wide">
-              {tournament.registration_open ? "Close" : "Open"}
-            </button>
-          </form>
-        </div>
-        {tournament.registration_open && (
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <span className="truncate rounded-lg bg-haze px-3 py-2 font-mono text-[11px]">/register/{id}</span>
-            <CopyButton path={`/register/${id}`} label="Copy link" />
-          </div>
-        )}
-      </div>
 
       <Eyebrow className="mt-7 mb-3">
         {teamList.length} {teamList.length === 1 ? "team" : "teams"}

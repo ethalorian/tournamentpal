@@ -27,14 +27,20 @@ const ALLOWED_MEDIA = new Set([
 ]);
 
 const SYSTEM_PROMPT =
-  "You extract sports team names from a screenshot of a tournament " +
-  "registration or schedule page. Return every team name that appears as a " +
+  "You extract sports team entries from a screenshot of a tournament " +
+  "registration or schedule page. Return every team that appears as a " +
   "registered or participating team, in the order shown. Do NOT include UI " +
   "labels, buttons, headings, or section titles (e.g. 'Actions', 'Facilities', " +
-  "'Who's Playing', 'Register'), division/pool/bracket names, dates, times, " +
-  "field or location names, scores, or coach names. Preserve each team name " +
-  "exactly as written. Respond with ONLY a JSON object of the form " +
-  '{"teams": ["Name 1", "Name 2"]} and nothing else.';
+  "'Who's Playing', 'Register'), dates, times, field or location names, " +
+  "scores, or coach names. Preserve each team name exactly as written.\n\n" +
+  "For each team, also capture its division / age group ONLY when the page " +
+  "makes it explicit — e.g. the team sits under a division heading like '12U' " +
+  "or '14U Gold', or a division/age is shown on the team's row. Copy that " +
+  "label exactly. If the page does not clearly indicate a division for a team, " +
+  'use an empty string "" — never guess a division.\n\n' +
+  "Respond with ONLY a JSON object of the form " +
+  '{"teams": [{"name": "Team 1", "division": "12U"}, ' +
+  '{"name": "Team 2", "division": ""}]} and nothing else.';
 
 export async function POST(request: NextRequest) {
   // Gate on an authenticated director so the API key can't be used anonymously.
@@ -148,11 +154,14 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ teams });
 }
 
+type ScannedTeam = { name: string; division: string };
+
 /**
  * Pull the team array out of the model's reply. Tolerates stray prose or a
- * ```json fence around the object by grabbing the first {...} block.
+ * ```json fence around the object by grabbing the first {...} block. Each entry
+ * may be an object {name, division} or a bare string (division defaults to "").
  */
-function parseTeams(text: string): string[] {
+function parseTeams(text: string): ScannedTeam[] {
   if (!text) return [];
   const match = text.match(/\{[\s\S]*\}/);
   const candidate = match ? match[0] : text;
@@ -160,8 +169,17 @@ function parseTeams(text: string): string[] {
     const obj = JSON.parse(candidate);
     if (Array.isArray(obj?.teams)) {
       return obj.teams
-        .map((t: unknown) => String(t).trim())
-        .filter((t: string) => t.length > 0);
+        .map((t: unknown): ScannedTeam => {
+          if (t && typeof t === "object") {
+            const rec = t as Record<string, unknown>;
+            return {
+              name: String(rec.name ?? "").trim(),
+              division: String(rec.division ?? "").trim(),
+            };
+          }
+          return { name: String(t).trim(), division: "" };
+        })
+        .filter((t: ScannedTeam) => t.name.length > 0);
     }
   } catch {
     // fall through
