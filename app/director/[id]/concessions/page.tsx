@@ -3,6 +3,7 @@ import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { TournamentNav } from "@/components/TournamentNav";
 import { Eyebrow, Field, inputClass, Button, Badge, EmptyState, Card } from "@/components/ui";
 import { addConcession, toggleSoldOut, removeConcession, pushConcessions } from "@/app/director/concessions";
+import { ScanConcessionsButton } from "@/components/ScanConcessionsButton";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,11 @@ export default async function ConcessionsManage({
           </div>
         </Card>
       )}
+
+      {/* Scan a menu photo → items & prices */}
+      <div className="mt-4">
+        <ScanConcessionsButton tournamentId={id} />
+      </div>
 
       <Card className="mt-4">
         <div className="display text-[15px]">Add a custom item</div>

@@ -10,6 +10,7 @@ import {
   regenerateWithConstraints,
   addMatchup,
   removeMatchup,
+  saveGameWindows,
 } from "@/app/director/scheduling";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,45 @@ export default async function SchedulingPage({
     force: "must meet in pool",
     separate: "never at the same time",
   };
+
+  // Build the same time-block grid the scheduler uses, so the director can paint
+  // which divisions may play in each window. Keyed `${day}__${timeMin}`.
+  const savedWindows =
+    ((tournament.schedule_config ?? {}) as { windows?: Record<string, string[]> }).windows ?? {};
+  const toMin = (s: string) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(s ?? "");
+    return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
+  };
+  const fmtMin = (min: number) => {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    const ap = h < 12 ? "am" : "pm";
+    const h12 = ((h + 11) % 12) + 1;
+    return `${h12}:${String(m).padStart(2, "0")} ${ap}`;
+  };
+  const enumerateDays = (start: string | null, end: string | null) => {
+    if (!start) return [] as string[];
+    const days: string[] = [];
+    const s = new Date(`${start}T00:00:00Z`);
+    const e = new Date(`${end ?? start}T00:00:00Z`);
+    for (let d = new Date(s); d <= e; d.setUTCDate(d.getUTCDate() + 1)) {
+      days.push(d.toISOString().slice(0, 10));
+      if (days.length > 30) break;
+    }
+    return days;
+  };
+  const winStep = (cfg.gameLengthMins || 90) + (cfg.bufferMins || 0);
+  const winStart = toMin(cfg.dayStart);
+  const winEnd = toMin(cfg.dayEnd);
+  const gLen = cfg.gameLengthMins || 90;
+  const windowDays = enumerateDays(tournament.start_date, tournament.end_date).map((day) => {
+    const blocks: { key: string; label: string }[] = [];
+    for (let t = winStart; t + gLen <= winEnd; t += winStep) {
+      blocks.push({ key: `${day}__${t}`, label: fmtMin(t) });
+    }
+    return { day, blocks };
+  });
+  const allWindowKeys = windowDays.flatMap((d) => d.blocks.map((b) => b.key));
 
   // Games the constraints left unplaced (only meaningful once a schedule exists).
   const unplaced = (games ?? []).filter((g) => !g.scheduled_at || !g.field_id);
@@ -161,23 +201,79 @@ export default async function SchedulingPage({
           <div className="flex flex-col gap-2">
             {divList.map((d) => (
               <Card key={d.id}>
-                <form action={saveDivisionWindow} className="flex flex-wrap items-end gap-3">
+                <form action={saveDivisionWindow} className="flex flex-col gap-3">
                   <input type="hidden" name="tournament_id" value={id} />
                   <input type="hidden" name="division_id" value={d.id} />
-                  <div className="min-w-[80px] flex-1">
-                    <div className="text-[14px] font-extrabold">{d.name}</div>
+                  <div className="text-[14px] font-extrabold">{d.name}</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Not before">
+                      <input name="window_start" type="time" defaultValue={d.window_start ?? ""} className={inputClass} />
+                    </Field>
+                    <Field label="Done by">
+                      <input name="window_end" type="time" defaultValue={d.window_end ?? ""} className={inputClass} />
+                    </Field>
                   </div>
-                  <Field label="Not before">
-                    <input name="window_start" type="time" defaultValue={d.window_start ?? ""} className={inputClass} />
-                  </Field>
-                  <Field label="Done by">
-                    <input name="window_end" type="time" defaultValue={d.window_end ?? ""} className={inputClass} />
-                  </Field>
-                  <Button type="submit" variant="ink" className="mb-[1px]">Save</Button>
+                  <Button type="submit" variant="ink" className="w-full">Save</Button>
                 </form>
               </Card>
             ))}
           </div>
+        </>
+      )}
+
+      {/* 2b · Game windows painted by division */}
+      {divList.length > 0 && allWindowKeys.length > 0 && (
+        <>
+          <Eyebrow className="mt-7 mb-3">Game windows by division</Eyebrow>
+          <p className="-mt-1 mb-3 text-[12px] text-muted">
+            Tag each time block with the divisions allowed to play then — e.g. give 16U
+            the first two blocks and 18U the third. Leave a block untagged to open it to
+            all divisions.
+          </p>
+          <Card>
+            <form action={saveGameWindows} className="flex flex-col gap-4">
+              <input type="hidden" name="tournament_id" value={id} />
+              <input type="hidden" name="keys" value={allWindowKeys.join(",")} />
+              {windowDays.map(({ day, blocks }) => (
+                <div key={day}>
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted">
+                    {new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    })}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {blocks.map((b) => (
+                      <div key={b.key} className="flex flex-wrap items-center gap-2">
+                        <span className="w-16 shrink-0 text-[12px] font-bold">{b.label}</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {divList.map((d) => (
+                            <label key={d.id} className="cursor-pointer">
+                              <input
+                                type="checkbox"
+                                name={`win:${b.key}`}
+                                value={d.name}
+                                defaultChecked={(savedWindows[b.key] ?? []).includes(d.name)}
+                                className="peer sr-only"
+                              />
+                              <span className="block rounded-full border-2 border-faint px-2.5 py-1 text-[11px] font-bold peer-checked:border-ink peer-checked:bg-ink peer-checked:text-white">
+                                {d.name}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <Button type="submit" variant="ink" className="w-full">
+                Save game windows
+              </Button>
+            </form>
+          </Card>
         </>
       )}
 
@@ -222,15 +318,15 @@ export default async function SchedulingPage({
                   </div>
                 )}
 
-                <div className="flex flex-wrap items-end gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <Field label="Can't play before">
                     <input name="avail_start" type="time" defaultValue={t.avail_start ?? ""} className={inputClass} />
                   </Field>
                   <Field label="Can't play after">
                     <input name="avail_end" type="time" defaultValue={t.avail_end ?? ""} className={inputClass} />
                   </Field>
-                  <Button type="submit" variant="ink" className="mb-[1px]">Save</Button>
                 </div>
+                <Button type="submit" variant="ink" className="w-full">Save team rules</Button>
               </form>
             </Card>
           ))}

@@ -154,6 +154,12 @@ export async function regenerateSchedule(
     }
   }
 
+  // Per-window division assignments (painted on the Scheduling tab), keyed
+  // `${day}__${timeMin}` → division names allowed in that window.
+  const windowsObj =
+    ((tournament.schedule_config ?? {}) as { windows?: Record<string, string[]> }).windows ?? {};
+  const windowDivisions = new Map<string, string[]>(Object.entries(windowsObj));
+
   // Plan every division's games first, then place them all together so fields
   // are never double-booked across divisions.
   const planned: ConstrainedGame[] = [];
@@ -234,6 +240,7 @@ export async function regenerateSchedule(
     teamConstraints,
     divisionWindows,
     separations,
+    windowDivisions,
   });
 
   const gameRows: Database["public"]["Tables"]["games"]["Insert"][] = [];

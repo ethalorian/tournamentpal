@@ -27,11 +27,14 @@ export default async function FieldsPage({
       supabase.from("sites").select("*").eq("tournament_id", id),
       supabase.from("divisions").select("*").eq("tournament_id", id).order("sort"),
       supabase.from("facility_sites").select("*").order("name"),
-      supabase.from("facility_fields").select("facility_site_id"),
+      supabase.from("facility_fields").select("*").order("name"),
     ]);
-  const fieldCountBySite = new Map<string, number>();
-  for (const f of facilityFields ?? [])
-    fieldCountBySite.set(f.facility_site_id, (fieldCountBySite.get(f.facility_site_id) ?? 0) + 1);
+  const facilityFieldsBySite = new Map<string, NonNullable<typeof facilityFields>>();
+  for (const f of facilityFields ?? []) {
+    const arr = facilityFieldsBySite.get(f.facility_site_id) ?? [];
+    arr.push(f);
+    facilityFieldsBySite.set(f.facility_site_id, arr);
+  }
   const facilityList = facilities ?? [];
   const siteName = new Map((sites ?? []).map((s) => [s.id, s.name]));
   const fieldList = fields ?? [];
@@ -48,30 +51,59 @@ export default async function FieldsPage({
         <Card className="mt-6">
           <div className="display text-[15px]">Pull from your facilities</div>
           <p className="mt-1 text-[12px] text-muted">
-            Tap a saved facility to drop its site and diamonds into this event.
+            Pick the diamonds you want from a saved facility — all are selected by default.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {facilityList.map((s) => (
-              <form key={s.id} action={addFacilityToTournament}>
-                <input type="hidden" name="tournament_id" value={id} />
-                <input type="hidden" name="facility_site_id" value={s.id} />
-                {isWizard && <input type="hidden" name="setup" value="1" />}
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 rounded-full border-2 border-ink px-3 py-1.5 text-[12px] font-bold active:scale-95"
+          <div className="mt-3 flex flex-col gap-3">
+            {facilityList.map((s) => {
+              const fs = facilityFieldsBySite.get(s.id) ?? [];
+              return (
+                <form
+                  key={s.id}
+                  action={addFacilityToTournament}
+                  className="rounded-xl border border-faint p-3"
                 >
-                  <span className="text-[15px] leading-none">+</span>
-                  {s.name}
-                  {fieldCountBySite.get(s.id) ? (
-                    <span className="text-muted">
-                      {fieldCountBySite.get(s.id)} {fieldCountBySite.get(s.id) === 1 ? "diamond" : "diamonds"}
-                    </span>
-                  ) : null}
-                </button>
-              </form>
-            ))}
+                  <input type="hidden" name="tournament_id" value={id} />
+                  <input type="hidden" name="facility_site_id" value={s.id} />
+                  {isWizard && <input type="hidden" name="setup" value="1" />}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[13px] font-bold">{s.name}</div>
+                    <button
+                      type="submit"
+                      className="display shrink-0 rounded-full border-2 border-ink px-3 py-1.5 text-[11px] tracking-wide active:scale-95"
+                    >
+                      Add selected
+                    </button>
+                  </div>
+                  {fs.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {fs.map((f) => (
+                        <label key={f.id} className="cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name="field_ids"
+                            value={f.id}
+                            defaultChecked
+                            className="peer sr-only"
+                          />
+                          <span className="block rounded-full border-2 border-faint px-2.5 py-1 text-[12px] font-bold peer-checked:border-ink peer-checked:bg-ink peer-checked:text-white">
+                            {f.name}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-1 text-[11px] text-muted">No diamonds saved yet.</div>
+                  )}
+                </form>
+              );
+            })}
           </div>
-          <Link href="/director/facilities" className="mt-3 inline-block text-[12px] font-bold text-ink underline">
+          <Link
+            href={`/director/facilities?return=${encodeURIComponent(
+              `/director/${id}/fields${isWizard ? "?setup=1" : ""}`
+            )}`}
+            className="mt-3 inline-block text-[12px] font-bold text-ink underline"
+          >
             Manage facilities →
           </Link>
         </Card>

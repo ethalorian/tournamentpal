@@ -123,6 +123,8 @@ export async function addFacilityToTournament(formData: FormData) {
   const tournamentId = String(formData.get("tournament_id") ?? "");
   const facilitySiteId = String(formData.get("facility_site_id") ?? "");
   const setup = String(formData.get("setup") ?? "") === "1";
+  // Which library diamonds to bring in. Empty = all of them (back-compat).
+  const selectedFieldIds = formData.getAll("field_ids").map((v) => String(v)).filter(Boolean);
   if (!tournamentId || !facilitySiteId) return;
 
   // Only the owning director can copy their own facility into their own event
@@ -163,7 +165,23 @@ export async function addFacilityToTournament(formData: FormData) {
     siteId = newSite?.id ?? null;
   }
 
-  const fields = libFields ?? [];
+  // Keep only the diamonds the director chose (or all if none specified).
+  let fields = libFields ?? [];
+  if (selectedFieldIds.length > 0) {
+    fields = fields.filter((f) => selectedFieldIds.includes(f.id));
+  }
+
+  // Don't re-add diamonds already pulled into this site (by name).
+  if (siteId) {
+    const { data: alreadyIn } = await supabase
+      .from("fields")
+      .select("name")
+      .eq("tournament_id", tournamentId)
+      .eq("site_id", siteId);
+    const have = new Set((alreadyIn ?? []).map((f) => f.name.toLowerCase()));
+    fields = fields.filter((f) => !have.has(f.name.toLowerCase()));
+  }
+
   if (fields.length > 0) {
     await supabase.from("fields").insert(
       fields.map((f) => ({

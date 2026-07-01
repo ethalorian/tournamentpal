@@ -3,11 +3,12 @@ import { loadOwnedTournament } from "@/lib/tournament";
 import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { TournamentNav } from "@/components/TournamentNav";
 import { Stepper } from "@/components/Stepper";
-import { Field, inputClass, Button, EmptyState, Eyebrow, Badge } from "@/components/ui";
-import { CopyButton } from "@/components/CopyButton";
-import { RemoveTeamButton } from "@/components/RemoveTeamButton";
+import { Field, inputClass, Button, EmptyState, Eyebrow } from "@/components/ui";
 import { ScanTeamsButton } from "@/components/ScanTeamsButton";
+import { DraggableTeamList } from "@/components/DraggableTeamList";
 import { addTeams } from "@/app/director/actions";
+import { buildSingleElim } from "@/lib/engine/schedule";
+import { getPreset } from "@/lib/engine/presets";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,20 @@ export default async function TeamsStep({
   ]);
   const divList = divisions ?? [];
   const teamList = teams ?? [];
+
+  // Single-elim formats seed straight from this order, so show the resulting
+  // first-round matchups as a live preview of the manual seeding.
+  const format = (tournament.format ?? {}) as { presetId?: string };
+  const preset = format.presetId ? getPreset(format.presetId) : undefined;
+  const isElim = !!preset && !preset.pool;
+  const teamNameById = new Map(teamList.map((t) => [t.id, t.name]));
+  const seedPreview =
+    isElim && teamList.length >= 2
+      ? buildSingleElim(
+          teamList.length,
+          teamList.map((t) => t.id)
+        ).filter((g) => g.round === 1)
+      : [];
 
   // Give each division a distinct color so the level of every team card is
   // scannable at a glance.
@@ -113,48 +128,57 @@ export default async function TeamsStep({
       {teamList.length === 0 ? (
         <EmptyState title="No teams yet" body="Add at least 3 to build a schedule." />
       ) : (
-        <div className="flex flex-col gap-2">
-          {teamList.map((t) => {
+        <DraggableTeamList
+          tournamentId={id}
+          showDivision={divList.length > 0}
+          warnOnRemove={tournament.status !== "draft"}
+          teams={teamList.map((t) => {
             const lvl = levelOf(t.division_id);
-            return (
-            <div
-              key={t.id}
-              className="rounded-xl border border-faint border-l-[5px] px-3.5 py-2.5"
-              style={{ borderLeftColor: lvl.color }}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="display flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-haze text-[12px]">
-                    {t.seed}
-                  </span>
-                  <span className="truncate text-[14px] font-bold">{t.name}</span>
-                  {divList.length > 0 && (
-                    <span
-                      className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white"
-                      style={{ backgroundColor: lvl.color }}
-                    >
-                      {lvl.name}
-                    </span>
-                  )}
-                  {t.manager_id ? <Badge tone="success">Coach</Badge> : <Badge tone="muted">Unclaimed</Badge>}
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {!t.manager_id && <CopyButton path={`/claim/${t.id}`} />}
-                  <RemoveTeamButton
-                    teamId={t.id}
-                    tournamentId={id}
-                    teamName={t.name}
-                    warn={tournament.status !== "draft"}
-                  />
-                </div>
-              </div>
-              {!t.manager_id && (
-                <div className="mt-1.5 pl-10 font-mono text-[10px] text-muted">/claim/{t.id.slice(0, 8)}…</div>
-              )}
-            </div>
-            );
+            return {
+              id: t.id,
+              name: t.name,
+              managerId: t.manager_id,
+              levelName: lvl.name,
+              levelColor: lvl.color,
+            };
           })}
-        </div>
+        />
+      )}
+
+      {seedPreview.length > 0 && (
+        <>
+          <Eyebrow className="mt-7 mb-3">Bracket preview · first round</Eyebrow>
+          <p className="-mt-1 mb-3 text-[12px] text-muted">
+            Matchups from your seed order — reorder teams above to change who meets. A
+            top seed drawing a &ldquo;Bye&rdquo; advances automatically.
+          </p>
+          <div className="flex flex-col gap-2">
+            {seedPreview.map((g) => (
+              <div
+                key={g.key}
+                className="flex items-center justify-between gap-2 rounded-xl border border-faint px-3.5 py-2.5 text-[13px]"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="display flex h-5 w-5 items-center justify-center rounded bg-haze text-[10px]">
+                    {g.homeSeed}
+                  </span>
+                  <span className="truncate font-bold">
+                    {g.homeTeamId ? teamNameById.get(g.homeTeamId) : "Bye"}
+                  </span>
+                </span>
+                <span className="shrink-0 px-1 text-[11px] text-muted">vs</span>
+                <span className="flex min-w-0 items-center justify-end gap-2">
+                  <span className="truncate font-bold">
+                    {g.awayTeamId ? teamNameById.get(g.awayTeamId) : "Bye"}
+                  </span>
+                  <span className="display flex h-5 w-5 items-center justify-center rounded bg-haze text-[10px]">
+                    {g.awaySeed}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </>
   );

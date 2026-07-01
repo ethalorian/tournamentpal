@@ -193,6 +193,27 @@ export async function removeTeam(formData: FormData) {
   revalidatePath(`/director/${tournamentId}/teams`);
 }
 
+/**
+ * Persist a full seed order (drag-and-drop). `order` is a comma-separated list
+ * of team ids; each team is assigned seed = its 1-based position.
+ */
+export async function reorderSeeds(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const order = String(formData.get("order") ?? "").split(",").filter(Boolean);
+  if (!tournamentId || order.length === 0) return;
+  await Promise.all(
+    order.map((teamId, i) =>
+      supabase
+        .from("teams")
+        .update({ seed: i + 1 })
+        .eq("id", teamId)
+        .eq("tournament_id", tournamentId)
+    )
+  );
+  revalidatePath(`/director/${tournamentId}/teams`);
+}
+
 /** Add a team reused from one of the director's past events (16a/16b). */
 export async function addTeamFromRecord(formData: FormData) {
   const { supabase } = await client();

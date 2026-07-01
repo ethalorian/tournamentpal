@@ -396,6 +396,9 @@ export function assignSchedule<G extends ConstrainedGame>(
     // Teams that must not share a time slot (keyed by team id → partner ids).
     // Enforced symmetrically; may span divisions (shared coach/players).
     separations?: Map<string, Set<string>>;
+    // Per-window division allowlist, keyed `${day}__${timeMin}` → division names.
+    // A window with entries only admits those divisions; absent/empty = open.
+    windowDivisions?: Map<string, string[]>;
   }
 ): (G & { fieldId: string | null; scheduledAt: string | null; conflict: string | null })[] {
   const { gameLengthMins: gLen, bufferMins, dayStartMin, dayEndMin } = opts.slot;
@@ -404,16 +407,17 @@ export function assignSchedule<G extends ConstrainedGame>(
   // Concrete slot grid across days, ordered chronologically. Wall-clock times
   // are interpreted in the tournament timezone, then stored as UTC instants.
   const tz = opts.slot.timeZone || "UTC";
-  const slots: { ms: number; timeMin: number }[] = [];
+  const slots: { ms: number; timeMin: number; day: string }[] = [];
   for (const day of opts.slot.days) {
     for (let t = dayStartMin; t + gLen <= dayEndMin; t += step) {
-      slots.push({ ms: wallTimeToUtcMs(day, t, tz), timeMin: t });
+      slots.push({ ms: wallTimeToUtcMs(day, t, tz), timeMin: t, day });
     }
   }
   slots.sort((a, b) => a.ms - b.ms);
 
   const fieldBusy = new Map<string, Set<number>>();
   const teamBusy = new Map<string, Set<number>>();
+  const teamLastField = new Map<string, string>(); // team id → last field played
   const busy = (m: Map<string, Set<number>>, k: string) =>
     m.get(k) ?? setNew(m, k);
 
@@ -459,6 +463,13 @@ export function assignSchedule<G extends ConstrainedGame>(
           if (awayC.availEndMin != null && endMin > awayC.availEndMin) continue;
         }
 
+        // Per-window division assignment: a tagged window only admits its
+        // divisions (untagged windows are open to all).
+        if (opts.windowDivisions && g.divisionName) {
+          const allowed = opts.windowDivisions.get(`${slots[si].day}__${timeMin}`);
+          if (allowed && allowed.length > 0 && !allowed.includes(g.divisionName)) continue;
+        }
+
         // A team can't already be playing in this slot.
         if (g.homeTeamId && busy(teamBusy, g.homeTeamId).has(si)) continue;
         if (g.awayTeamId && busy(teamBusy, g.awayTeamId).has(si)) continue;
@@ -475,13 +486,28 @@ export function assignSchedule<G extends ConstrainedGame>(
           if (partnerPlaying(g.homeTeamId) || partnerPlaying(g.awayTeamId)) continue;
         }
 
-        // First eligible field open at this slot.
-        const field = eligibleFields.find((f) => !busy(fieldBusy, f.id).has(si));
-        if (!field) continue;
+        // Open eligible fields at this slot.
+        const openFields = eligibleFields.filter((f) => !busy(fieldBusy, f.id).has(si));
+        if (openFields.length === 0) continue;
+
+        // Soft preference: keep a team on the field it just played (fewer moves
+        // between back-to-back games). Falls back to the first open field.
+        const homeLast = g.homeTeamId ? teamLastField.get(g.homeTeamId) : undefined;
+        const awayLast = g.awayTeamId ? teamLastField.get(g.awayTeamId) : undefined;
+        const field =
+          openFields.find((f) => f.id === homeLast) ??
+          openFields.find((f) => f.id === awayLast) ??
+          openFields[0];
 
         busy(fieldBusy, field.id).add(si);
-        if (g.homeTeamId) busy(teamBusy, g.homeTeamId).add(si);
-        if (g.awayTeamId) busy(teamBusy, g.awayTeamId).add(si);
+        if (g.homeTeamId) {
+          busy(teamBusy, g.homeTeamId).add(si);
+          teamLastField.set(g.homeTeamId, field.id);
+        }
+        if (g.awayTeamId) {
+          busy(teamBusy, g.awayTeamId).add(si);
+          teamLastField.set(g.awayTeamId, field.id);
+        }
         out.push({
           ...g,
           fieldId: field.id,

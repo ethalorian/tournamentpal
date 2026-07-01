@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { Eyebrow, Field, inputClass, Button, Badge, EmptyState, Card } from "@/components/ui";
@@ -14,10 +15,20 @@ export const dynamic = "force-dynamic";
 export default async function FacilitiesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ dup?: string }>;
+  searchParams: Promise<{ dup?: string; return?: string }>;
 }) {
   const { supabase, user } = await requireUser();
-  const { dup } = await searchParams;
+  const { dup, return: returnTo } = await searchParams;
+  // Only honor internal return paths (prevents open-redirect).
+  const back = returnTo && returnTo.startsWith("/director/") ? returnTo : null;
+  const forwardBtn = back ? (
+    <Link
+      href={back}
+      className="btn-accent flex h-[54px] items-center justify-center rounded-2xl text-[16px]"
+    >
+      Done — back to event setup →
+    </Link>
+  ) : null;
 
   const [{ data: sites }, { data: fields }] = await Promise.all([
     supabase.from("facility_sites").select("*").eq("director_id", user.id).order("name"),
@@ -34,12 +45,14 @@ export default async function FacilitiesPage({
 
   return (
     <DirectorShell>
-      <BackLink href="/director" />
+      <BackLink href={back ?? "/director"} label={back ? "Event setup" : undefined} />
       <h1 className="display mt-3 text-[26px]">Your facilities</h1>
       <p className="mt-1.5 text-[13px] text-muted">
         Set up your parks and diamonds once. When you create a tournament, pull any
         facility in with a single tap on the Fields step.
       </p>
+
+      {forwardBtn && <div className="mt-4">{forwardBtn}</div>}
 
       {dupSite && (
         <div className="mt-4 rounded-xl border-2 border-ink bg-accent/15 px-4 py-3">
@@ -163,6 +176,15 @@ export default async function FacilitiesPage({
           </Button>
         </form>
       </Card>
+
+      {forwardBtn && (
+        <div className="mt-6">
+          {forwardBtn}
+          <p className="mt-2 text-center text-[11px] text-muted">
+            Your facilities are saved — head back to pull them into your event.
+          </p>
+        </div>
+      )}
     </DirectorShell>
   );
 }

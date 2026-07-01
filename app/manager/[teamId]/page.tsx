@@ -13,7 +13,7 @@ export default async function ManagerHome({ params }: { params: Promise<{ teamId
   const { teamId } = await params;
   const { supabase, team, tournament, unread } = await loadManagedTeam(teamId);
 
-  const [{ data: allTeams }, { data: games }, poolTeam] = await Promise.all([
+  const [{ data: allTeams }, { data: games }, poolTeam, { data: divisions }] = await Promise.all([
     supabase.from("teams").select("id,name").eq("tournament_id", tournament.id),
     supabase
       .from("games")
@@ -22,7 +22,31 @@ export default async function ManagerHome({ params }: { params: Promise<{ teamId
       .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
       .order("scheduled_at"),
     supabase.from("pool_teams").select("pool_id").eq("team_id", teamId).maybeSingle(),
+    supabase.from("divisions").select("id,name").eq("tournament_id", tournament.id),
   ]);
+
+  // Read-only view of the game windows the director tagged for this team's
+  // division (set on the Scheduling tab).
+  const myDivName = team.division_id
+    ? (divisions ?? []).find((d) => d.id === team.division_id)?.name
+    : undefined;
+  const windowsMap =
+    ((tournament.schedule_config ?? {}) as { windows?: Record<string, string[]> }).windows ?? {};
+  const fmtWinMin = (min: number) => {
+    const h = Math.floor(min / 60);
+    const ap = h < 12 ? "am" : "pm";
+    const h12 = ((h + 11) % 12) + 1;
+    return `${h12}:${String(min % 60).padStart(2, "0")} ${ap}`;
+  };
+  const myWindows = myDivName
+    ? Object.entries(windowsMap)
+        .filter(([, divs]) => divs.includes(myDivName))
+        .map(([key]) => {
+          const [day, min] = key.split("__");
+          return { day, min: Number(min) };
+        })
+        .sort((a, b) => a.day.localeCompare(b.day) || a.min - b.min)
+    : [];
 
   const teamName = new Map((allTeams ?? []).map((t) => [t.id, t.name]));
   const nm = (id: string | null) => (id ? teamName.get(id) ?? "TBD" : "TBD");
@@ -75,6 +99,33 @@ export default async function ManagerHome({ params }: { params: Promise<{ teamId
         </div>
       ) : (
         <EmptyState title="No upcoming games" body="Check back once the bracket advances." />
+      )}
+
+      {/* Division game windows (read-only) */}
+      {myWindows.length > 0 && (
+        <>
+          <Eyebrow className="mb-3 mt-7">Your game windows</Eyebrow>
+          <div className="rounded-2xl border border-faint p-4">
+            <div className="mb-2 text-[12px] text-muted">
+              <span className="font-bold text-ink">{myDivName}</span> is scheduled to play in
+              these time blocks:
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {myWindows.map((w) => (
+                <span
+                  key={`${w.day}-${w.min}`}
+                  className="rounded-full bg-haze px-2.5 py-1 text-[11px] font-bold"
+                >
+                  {new Date(`${w.day}T00:00:00Z`).toLocaleDateString("en-US", {
+                    weekday: "short",
+                    timeZone: "UTC",
+                  })}{" "}
+                  {fmtWinMin(w.min)}
+                </span>
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Schedule */}

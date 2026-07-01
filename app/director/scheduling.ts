@@ -127,6 +127,24 @@ export async function saveTeamConstraints(formData: FormData) {
   revalidatePath(`/director/${tournamentId}/scheduling`);
 }
 
+/** Save the painted per-window division assignments. */
+export async function saveGameWindows(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const keys = String(formData.get("keys") ?? "").split(",").filter(Boolean);
+  const windows: Record<string, string[]> = {};
+  for (const k of keys) {
+    const divs = formData.getAll(`win:${k}`).map((v) => String(v)).filter(Boolean);
+    if (divs.length > 0) windows[k] = divs;
+  }
+  const config = await readScheduleConfig(supabase, tournamentId);
+  await supabase
+    .from("tournaments")
+    .update({ schedule_config: { ...config, windows } } as never)
+    .eq("id", tournamentId);
+  revalidatePath(`/director/${tournamentId}/scheduling`);
+}
+
 /** Save config/constraints implicitly then rebuild the schedule. */
 export async function regenerateWithConstraints(formData: FormData) {
   const { supabase } = await client();

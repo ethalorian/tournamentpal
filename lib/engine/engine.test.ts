@@ -138,6 +138,38 @@ test("applyPoolMatchups: forbid splits a pair across pools", () => {
   assert.deepEqual(out.map((p) => p.teams.length).sort(), [2, 2]);
 });
 
+test("assignSchedule: keeps a team on the same field across its games", () => {
+  // t1 plays twice; with two open fields it should stay on one field.
+  const games: ConstrainedGame[] = [
+    { key: "g1", stage: "pool", round: 1, homeTeamId: "t1", awayTeamId: "t2", divisionId: null },
+    { key: "g2", stage: "pool", round: 2, homeTeamId: "t1", awayTeamId: "t3", divisionId: null },
+  ];
+  const out = assignSchedule(games, F2, {
+    slot: SLOT,
+    teamConstraints: new Map(),
+    divisionWindows: new Map(),
+  });
+  const g1 = out.find((g) => g.key === "g1")!;
+  const g2 = out.find((g) => g.key === "g2")!;
+  assert.ok(g1.fieldId && g2.fieldId, "both placed");
+  assert.equal(g1.fieldId, g2.fieldId, "t1 should stay on the same field");
+});
+
+test("assignSchedule: a window's division tag confines who plays then", () => {
+  // Tag the 8:00 block for 16U only; an 18U game must land later.
+  const games: ConstrainedGame[] = [
+    { key: "a", stage: "pool", round: 1, homeTeamId: "t1", awayTeamId: "t2", divisionId: "d18", divisionName: "18U" },
+  ];
+  const out = assignSchedule(games, F2, {
+    slot: SLOT,
+    teamConstraints: new Map(),
+    divisionWindows: new Map(),
+    windowDivisions: new Map([["2026-07-01__480", ["16U"]]]),
+  });
+  assert.ok(out[0].scheduledAt, "placed");
+  assert.ok(minsOfDay(out[0].scheduledAt!) >= 9 * 60 + 30, "18U pushed past the 16U-only 8:00 window");
+});
+
 test("assignSchedule: separated teams never share a time slot", () => {
   const games: ConstrainedGame[] = [
     { key: "a", stage: "pool", round: 1, homeTeamId: "t1", awayTeamId: "t2", divisionId: null },
