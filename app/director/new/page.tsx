@@ -2,6 +2,7 @@ import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { Stepper } from "@/components/Stepper";
 import { Field, inputClass, Button } from "@/components/ui";
 import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
+import { DivisionPicker } from "@/components/DivisionPicker";
 import { createTournamentDraft } from "@/app/director/actions";
 
 export default function NewTournamentPage() {
@@ -52,8 +53,8 @@ export default function NewTournamentPage() {
           </Field>
         </div>
 
-        <Field label="Age divisions" hint="Comma-separated, e.g. 10U, 12U, 16U. Leave blank for a single open division.">
-          <input name="divisions" className={inputClass} placeholder="10U, 12U, 16U" />
+        <Field label="Age divisions">
+          <DivisionPicker />
         </Field>
 
         <Button type="submit" className="mt-2 w-full">
