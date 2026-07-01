@@ -7,28 +7,14 @@ type Tab = { seg: string; label: string; icon: "home" | "cal" | "table" | "pin" 
 
 const ICONS: Record<Tab["icon"], (a: boolean) => React.ReactNode> = {
   home: (a) => (
-    // House flipped vertically (roof pointing down).
-    <svg width="22" height="22" viewBox="0 0 20 20" fill="none" style={{ transform: "scaleY(-1)" }}>
+    // Home plate (softball/baseball) — flat top, point down.
+    <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
       <path
-        d="M3 9 L10 3 L17 9"
+        d="M4 4 H16 V11 L10 17 L4 11 Z"
         stroke={a ? "#facc15" : "#7a7a7a"}
         strokeWidth="2"
-        strokeLinecap="round"
         strokeLinejoin="round"
-      />
-      <path
-        d="M5 9 V16 H15 V9"
-        stroke={a ? "#facc15" : "#7a7a7a"}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8.5 16 V12 H11.5 V16"
-        stroke={a ? "#facc15" : "#7a7a7a"}
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        fill={a ? "#facc15" : "none"}
       />
     </svg>
   ),
