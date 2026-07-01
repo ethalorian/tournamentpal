@@ -35,9 +35,15 @@ const SYSTEM_PROMPT =
   "scores, or coach names. Preserve each team name exactly as written.\n\n" +
   "For each team, also capture its division / age group ONLY when the page " +
   "makes it explicit — e.g. the team sits under a division heading like '12U' " +
-  "or '14U Gold', or a division/age is shown on the team's row. Copy that " +
-  "label exactly. If the page does not clearly indicate a division for a team, " +
-  'use an empty string "" — never guess a division.\n\n' +
+  "or '14U Gold', or a division/age is shown on the team's row. Copy the label " +
+  "exactly.\n\n" +
+  "Always use the MOST SPECIFIC label that identifies the team's bracket. If a " +
+  "team sits under a broad age group (e.g. '16U') AND within a more specific " +
+  "grouping (a tier or color like 'Gold', 'Silver', 'American', 'National'), " +
+  "combine them into one specific label such as '16U Gold' — do NOT return just " +
+  "'16U' when a more specific division is shown for that team.\n\n" +
+  'If the page does not clearly indicate a division for a team, use "" — ' +
+  "never guess a division.\n\n" +
   "Respond with ONLY a JSON object of the form " +
   '{"teams": [{"name": "Team 1", "division": "12U"}, ' +
   '{"name": "Team 2", "division": ""}]} and nothing else.';

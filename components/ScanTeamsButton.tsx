@@ -27,6 +27,7 @@ export function ScanTeamsButton({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<Row[]>([]);
+  const [bulkDiv, setBulkDiv] = useState("");
   const [status, setStatus] = useState<"idle" | "reading" | "saving" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -106,6 +107,15 @@ export function ScanTeamsButton({
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, [field]: value } : r)));
   }
 
+  // Tag every row with one division — e.g. collapse a mixed "16U" / "16 Gold"
+  // read into a single "16 Gold", or set a division the photo didn't show.
+  function applyToAll(onlyBlank: boolean) {
+    const v = bulkDiv.trim();
+    setRows((prev) =>
+      prev.map((r) => (onlyBlank && r.division.trim() ? r : { ...r, division: v }))
+    );
+  }
+
   function remove(key: string) {
     setRows((prev) => prev.filter((r) => r.key !== key));
   }
@@ -168,6 +178,33 @@ export function ScanTeamsButton({
               <option key={d.id} value={d.name} />
             ))}
           </datalist>
+
+          {/* Bulk-tag divisions after the scan (retag or supersede a broad tag). */}
+          <div className="mb-2 flex items-center gap-2">
+            <input
+              value={bulkDiv}
+              onChange={(e) => setBulkDiv(e.target.value)}
+              list={listId}
+              placeholder="Tag a division…"
+              className="min-w-0 flex-1 rounded-lg border border-faint bg-haze px-2.5 py-2 text-[13px] outline-none focus:border-ink placeholder:text-muted"
+            />
+            <button
+              type="button"
+              onClick={() => applyToAll(true)}
+              title="Apply to teams with no division"
+              className="display shrink-0 rounded-full border-2 border-faint px-2.5 py-1.5 text-[11px] tracking-wide text-muted active:scale-95"
+            >
+              Blanks
+            </button>
+            <button
+              type="button"
+              onClick={() => applyToAll(false)}
+              title="Apply to every team"
+              className="display shrink-0 rounded-full border-2 border-ink px-2.5 py-1.5 text-[11px] tracking-wide active:scale-95"
+            >
+              All
+            </button>
+          </div>
 
           <div className="mb-1.5 flex gap-2 px-0.5">
             <span className="eyebrow flex-1">Team</span>
