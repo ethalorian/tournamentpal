@@ -148,6 +148,55 @@ export async function saveDayGrids(formData: FormData) {
   revalidatePath(`/director/${tournamentId}/scheduling`);
 }
 
+/** Set the minimum pool-game guarantee (display/target only). */
+export async function saveMinPoolGames(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const min = Math.max(0, Math.round(Number(formData.get("min") ?? 0)) || 0);
+  const config = await readScheduleConfig(supabase, tournamentId);
+  await supabase
+    .from("tournaments")
+    .update({ schedule_config: { ...config, minPoolGames: min } } as never)
+    .eq("id", tournamentId);
+  revalidatePath(`/director/${tournamentId}/scheduling`);
+}
+
+type Extra = { a: string; b: string };
+
+/** Add an extra pool game between two teams (to reach the minimum guarantee). */
+export async function addExtraGame(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const a = String(formData.get("team_a") ?? "");
+  const b = String(formData.get("team_b") ?? "");
+  if (!tournamentId || !a || !b || a === b) return;
+  const config = await readScheduleConfig(supabase, tournamentId);
+  const list = (Array.isArray(config.extraGames) ? config.extraGames : []) as Extra[];
+  list.push({ a, b });
+  await supabase
+    .from("tournaments")
+    .update({ schedule_config: { ...config, extraGames: list } } as never)
+    .eq("id", tournamentId);
+  revalidatePath(`/director/${tournamentId}/scheduling`);
+}
+
+/** Remove an extra pool game by index. */
+export async function removeExtraGame(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const idx = Number(formData.get("index") ?? -1);
+  const config = await readScheduleConfig(supabase, tournamentId);
+  const list = (Array.isArray(config.extraGames) ? config.extraGames : []) as Extra[];
+  if (idx >= 0 && idx < list.length) {
+    list.splice(idx, 1);
+    await supabase
+      .from("tournaments")
+      .update({ schedule_config: { ...config, extraGames: list } } as never)
+      .eq("id", tournamentId);
+  }
+  revalidatePath(`/director/${tournamentId}/scheduling`);
+}
+
 /** Tag each tournament day as pool play, elimination, or both. */
 export async function saveDayStages(formData: FormData) {
   const { supabase } = await client();

@@ -15,6 +15,9 @@ import {
   saveDayStages,
   saveDayGrids,
   setGameField,
+  saveMinPoolGames,
+  addExtraGame,
+  removeExtraGame,
 } from "@/app/director/scheduling";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +60,20 @@ export default async function SchedulingPage({
   const championshipGames = bracketGames.filter(
     (g) => (g.round ?? 0) === maxRoundByDiv.get(g.division_id ?? "_")
   );
+
+  // Pool-game counts per team + the minimum-games guarantee.
+  const poolCountByTeam = new Map<string, number>();
+  for (const g of games ?? []) {
+    if (g.stage !== "pool") continue;
+    if (g.home_team_id) poolCountByTeam.set(g.home_team_id, (poolCountByTeam.get(g.home_team_id) ?? 0) + 1);
+    if (g.away_team_id) poolCountByTeam.set(g.away_team_id, (poolCountByTeam.get(g.away_team_id) ?? 0) + 1);
+  }
+  const minPoolGames =
+    ((tournament.schedule_config ?? {}) as { minPoolGames?: number }).minPoolGames ?? 0;
+  const extraGames =
+    ((tournament.schedule_config ?? {}) as { extraGames?: { a: string; b: string }[] }).extraGames ??
+    [];
+  const belowMin = teamList.filter((t) => (poolCountByTeam.get(t.id) ?? 0) < minPoolGames);
 
   const cfg = { ...DEFAULTS, ...((tournament.schedule_config ?? {}) as Partial<typeof DEFAULTS>) };
 
@@ -470,6 +487,117 @@ export default async function SchedulingPage({
         </div>
         <Badge tone="muted">Fields tab</Badge>
       </div>
+
+      {/* 4b · Pool game guarantee */}
+      {teamList.length > 0 && (
+        <>
+          <Eyebrow className="mt-7 mb-3">Pool games per team</Eyebrow>
+          <p className="-mt-1 mb-3 text-[12px] text-muted">
+            Set a minimum, then add extra games for any team that falls short. Counts
+            update after you rebuild the schedule.
+          </p>
+
+          <Card>
+            <form action={saveMinPoolGames} className="flex items-end gap-2">
+              <input type="hidden" name="tournament_id" value={id} />
+              <label className="flex flex-col">
+                <span className="eyebrow mb-2">Minimum pool games</span>
+                <input
+                  name="min"
+                  type="number"
+                  min={0}
+                  max={20}
+                  defaultValue={minPoolGames}
+                  className={`${inputClass} w-24`}
+                />
+              </label>
+              <div className="mb-[1px]">
+                <SaveButton savedLabel="Saved ✓">Save</SaveButton>
+              </div>
+            </form>
+
+            {/* Per-team counts */}
+            <div className="mt-4 flex flex-col gap-1.5">
+              {teamList.map((t) => {
+                const n = poolCountByTeam.get(t.id) ?? 0;
+                const short = minPoolGames > 0 && n < minPoolGames;
+                return (
+                  <div
+                    key={t.id}
+                    className={`flex items-center justify-between rounded-lg px-3 py-2 text-[13px] ${
+                      short ? "bg-danger/10" : "bg-haze"
+                    }`}
+                  >
+                    <span className="truncate font-bold">{t.name}</span>
+                    <span className={short ? "font-extrabold text-danger" : "font-bold text-muted"}>
+                      {n} {n === 1 ? "game" : "games"}
+                      {short ? ` · needs ${minPoolGames - n} more` : ""}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            {minPoolGames > 0 && belowMin.length === 0 && (
+              <p className="mt-3 text-[12px] font-bold text-success">
+                Every team meets the {minPoolGames}-game minimum.
+              </p>
+            )}
+          </Card>
+
+          {/* Add an extra game */}
+          <Card className="mt-3">
+            <form action={addExtraGame} className="flex flex-col gap-3">
+              <input type="hidden" name="tournament_id" value={id} />
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col">
+                  <span className="eyebrow mb-2">Team</span>
+                  <select name="team_a" className={inputClass} defaultValue="">
+                    <option value="" disabled>
+                      Pick a team
+                    </option>
+                    {renderTeamOptions()}
+                  </select>
+                </label>
+                <label className="flex flex-col">
+                  <span className="eyebrow mb-2">Plays</span>
+                  <select name="team_b" className={inputClass} defaultValue="">
+                    <option value="" disabled>
+                      Pick a team
+                    </option>
+                    {renderTeamOptions()}
+                  </select>
+                </label>
+              </div>
+              <SaveButton savedLabel="Game added ✓">Add extra game</SaveButton>
+            </form>
+
+            {extraGames.length > 0 && (
+              <div className="mt-3 flex flex-col gap-2">
+                {extraGames.map((eg, i) => (
+                  <div
+                    key={`${eg.a}-${eg.b}-${i}`}
+                    className="flex items-center justify-between rounded-xl border border-faint px-3.5 py-2.5 text-[13px]"
+                  >
+                    <span>
+                      <span className="font-bold">{teamName.get(eg.a) ?? "—"}</span>
+                      <span className="text-muted"> vs </span>
+                      <span className="font-bold">{teamName.get(eg.b) ?? "—"}</span>
+                    </span>
+                    <form action={removeExtraGame}>
+                      <input type="hidden" name="tournament_id" value={id} />
+                      <input type="hidden" name="index" value={i} />
+                      <button type="submit" className="text-[12px] font-bold text-muted hover:text-danger">
+                        Remove
+                      </button>
+                    </form>
+                  </div>
+                ))}
+                <p className="text-[11px] text-muted">Rebuild the schedule below to place these games.</p>
+              </div>
+            )}
+          </Card>
+        </>
+      )}
 
       {/* 5 · Matchup rules */}
       <Eyebrow className="mt-7 mb-3">Matchup rules</Eyebrow>

@@ -255,6 +255,29 @@ export async function regenerateSchedule(
     }
   }
 
+  // Director-added extra pool games, used to bring every team up to a minimum
+  // number of pool games. Placed after the regular pool rounds.
+  const extraGames =
+    ((tournament.schedule_config ?? {}) as { extraGames?: { a: string; b: string }[] }).extraGames ??
+    [];
+  const teamById = new Map(allTeams.map((t) => [t.id, t]));
+  extraGames.forEach((eg, i) => {
+    const home = teamById.get(eg.a);
+    const away = teamById.get(eg.b);
+    if (!home || !away || home.id === away.id) return;
+    const divId = home.division_id ?? away.division_id ?? null;
+    const divName = allDivisions.find((d) => d.id === divId)?.name;
+    planned.push({
+      key: `extra-${i}`,
+      stage: "pool",
+      round: 99,
+      homeTeamId: home.id,
+      awayTeamId: away.id,
+      divisionId: divId,
+      divisionName: divName,
+    });
+  });
+
   const scheduled = assignSchedule(planned, eligibleFields, {
     slot,
     teamConstraints,
