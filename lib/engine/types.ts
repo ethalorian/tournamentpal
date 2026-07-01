@@ -92,6 +92,21 @@ export type ConstrainedGame = PlannedGame & {
   divisionName?: string;
 };
 
+/**
+ * A director-set relationship between two teams that shapes the schedule:
+ *   • "forbid"   — never scheduled against each other. Same-division only; their
+ *                  pool game is dropped and pools try to keep them apart.
+ *   • "force"    — guaranteed to meet in pool play. Same-division only; the two
+ *                  are co-located in one pool.
+ *   • "separate" — their games never share a time slot (shared coach/players).
+ *                  May cross divisions.
+ */
+export type MatchupConstraint = {
+  a: string; // team id
+  b: string; // team id
+  type: "forbid" | "force" | "separate";
+};
+
 export type GameResult = {
   homeTeamId: string | null;
   awayTeamId: string | null;

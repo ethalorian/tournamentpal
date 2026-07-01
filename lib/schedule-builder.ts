@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@/lib/database.types";
 import {
   buildPools,
+  applyPoolMatchups,
   roundRobin,
   buildSingleElim,
   assignSchedule,
@@ -15,6 +16,7 @@ import type {
   DivisionWindow,
   EngineField,
   EngineTeam,
+  MatchupConstraint,
   SlotConfig,
   TeamConstraint,
 } from "@/lib/engine/types";
@@ -130,6 +132,28 @@ export async function regenerateSchedule(
     });
   }
 
+  // Director-set matchup rules (stored on schedule_config). forbid/force apply
+  // within a division; separate can cross divisions.
+  const matchups =
+    ((tournament.schedule_config ?? {}) as { matchups?: MatchupConstraint[] }).matchups ?? [];
+  const teamIds = new Set(allTeams.map((t) => t.id));
+  const valid = matchups.filter((m) => m.a && m.b && m.a !== m.b && teamIds.has(m.a) && teamIds.has(m.b));
+  const pairKey = (x: string, y: string) => (x < y ? `${x}|${y}` : `${y}|${x}`);
+  const forbidPairs = new Set(valid.filter((m) => m.type === "forbid").map((m) => pairKey(m.a, m.b)));
+
+  // Symmetric team→partners map for time separation.
+  const separations = new Map<string, Set<string>>();
+  const link = (x: string, y: string) => {
+    if (!separations.has(x)) separations.set(x, new Set());
+    separations.get(x)!.add(y);
+  };
+  for (const m of valid) {
+    if (m.type === "separate") {
+      link(m.a, m.b);
+      link(m.b, m.a);
+    }
+  }
+
   // Plan every division's games first, then place them all together so fields
   // are never double-booked across divisions.
   const planned: ConstrainedGame[] = [];
@@ -147,7 +171,15 @@ export async function regenerateSchedule(
     }));
 
     if (preset.pool) {
-      const pools = buildPools(engTeams, poolSize);
+      // Force/forbid only bind teams within this division.
+      const inGroup = new Set(engTeams.map((t) => t.id));
+      const force = valid
+        .filter((m) => m.type === "force" && inGroup.has(m.a) && inGroup.has(m.b))
+        .map((m) => [m.a, m.b] as [string, string]);
+      const forbid = valid
+        .filter((m) => m.type === "forbid" && inGroup.has(m.a) && inGroup.has(m.b))
+        .map((m) => [m.a, m.b] as [string, string]);
+      const pools = applyPoolMatchups(buildPools(engTeams, poolSize), force, forbid);
 
       const { data: poolRows } = await supabase
         .from("pools")
@@ -167,6 +199,8 @@ export async function regenerateSchedule(
         const rounds = roundRobin(p.teams.map((t) => t.id));
         rounds.forEach((round, ri) => {
           round.forEach(([home, away], gi) => {
+            // Drop a forbidden pairing that still shares a pool.
+            if (forbidPairs.has(pairKey(home, away))) return;
             planned.push({
               key: `${divId}-pool-${p.name}-r${ri + 1}-g${gi + 1}`,
               stage: "pool",
@@ -199,6 +233,7 @@ export async function regenerateSchedule(
     slot,
     teamConstraints,
     divisionWindows,
+    separations,
   });
 
   const gameRows: Database["public"]["Tables"]["games"]["Insert"][] = [];

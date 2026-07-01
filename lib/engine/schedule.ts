@@ -61,6 +61,53 @@ export function buildPools(
     .map((teams, i) => ({ name: `Pool ${String.fromCharCode(65 + i)}`, teams }));
 }
 
+type Pool = { name: string; teams: EngineTeam[] };
+
+/**
+ * Adjust pools (best-effort, size-preserving swaps) so that:
+ *   • every `force` pair shares a pool (they'll meet in round-robin), and
+ *   • every `forbid` pair sits in different pools.
+ * Both inputs are lists of [teamIdA, teamIdB]. With a single pool, force is
+ * automatically satisfied and forbid can't be (the caller drops that game).
+ * Constraints that can't be reconciled are left as-is rather than thrown.
+ */
+export function applyPoolMatchups(
+  pools: Pool[],
+  force: [string, string][],
+  forbid: [string, string][]
+): Pool[] {
+  const result: Pool[] = pools.map((p) => ({ name: p.name, teams: [...p.teams] }));
+  const poolOf = (id: string) => result.findIndex((p) => p.teams.some((t) => t.id === id));
+
+  // FORCE: pull b into a's pool, swapping out a non-anchor team to keep sizes.
+  for (const [a, b] of force) {
+    const pa = poolOf(a);
+    const pb = poolOf(b);
+    if (pa < 0 || pb < 0 || pa === pb) continue;
+    const bTeam = result[pb].teams.find((t) => t.id === b);
+    const swap = result[pa].teams.find((t) => t.id !== a);
+    if (!bTeam || !swap) continue;
+    result[pb].teams = result[pb].teams.filter((t) => t.id !== b).concat(swap);
+    result[pa].teams = result[pa].teams.filter((t) => t.id !== swap.id).concat(bTeam);
+  }
+
+  // FORBID: if a pair shares a pool, move b to another pool via a swap.
+  for (const [a, b] of forbid) {
+    const pa = poolOf(a);
+    if (pa < 0 || poolOf(b) !== pa) continue;
+    const otherIdx = result.findIndex((p, i) => i !== pa && p.teams.length > 0);
+    if (otherIdx < 0) continue;
+    const bTeam = result[pa].teams.find((t) => t.id === b);
+    // Don't swap back a team that is forced-with or forbidden-against b's stayers.
+    const swap = result[otherIdx].teams[0];
+    if (!bTeam || !swap) continue;
+    result[pa].teams = result[pa].teams.filter((t) => t.id !== b).concat(swap);
+    result[otherIdx].teams = result[otherIdx].teams.filter((t) => t.id !== swap.id).concat(bTeam);
+  }
+
+  return result;
+}
+
 /**
  * Round-robin pairings via the circle method. Returns an array of rounds,
  * each round being a list of [home, away] team-id pairs. A null entry is a bye.
@@ -346,6 +393,9 @@ export function assignSchedule<G extends ConstrainedGame>(
     slot: SlotConfig;
     teamConstraints: Map<string, TeamConstraint>;
     divisionWindows: Map<string, DivisionWindow>; // keyed by division name
+    // Teams that must not share a time slot (keyed by team id → partner ids).
+    // Enforced symmetrically; may span divisions (shared coach/players).
+    separations?: Map<string, Set<string>>;
   }
 ): (G & { fieldId: string | null; scheduledAt: string | null; conflict: string | null })[] {
   const { gameLengthMins: gLen, bufferMins, dayStartMin, dayEndMin } = opts.slot;
@@ -412,6 +462,18 @@ export function assignSchedule<G extends ConstrainedGame>(
         // A team can't already be playing in this slot.
         if (g.homeTeamId && busy(teamBusy, g.homeTeamId).has(si)) continue;
         if (g.awayTeamId && busy(teamBusy, g.awayTeamId).has(si)) continue;
+
+        // Separated teams (shared coach/players) can't share this slot either.
+        if (opts.separations) {
+          const partnerPlaying = (teamId: string | null) => {
+            if (!teamId) return false;
+            const partners = opts.separations!.get(teamId);
+            if (!partners) return false;
+            for (const p of partners) if (busy(teamBusy, p).has(si)) return true;
+            return false;
+          };
+          if (partnerPlaying(g.homeTeamId) || partnerPlaying(g.awayTeamId)) continue;
+        }
 
         // First eligible field open at this slot.
         const field = eligibleFields.find((f) => !busy(fieldBusy, f.id).has(si));

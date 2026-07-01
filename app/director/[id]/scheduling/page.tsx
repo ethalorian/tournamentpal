@@ -8,6 +8,8 @@ import {
   saveDivisionWindow,
   saveTeamConstraints,
   regenerateWithConstraints,
+  addMatchup,
+  removeMatchup,
 } from "@/app/director/scheduling";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +39,45 @@ export default async function SchedulingPage({
   const teamName = new Map(teamList.map((t) => [t.id, t.name]));
 
   const cfg = { ...DEFAULTS, ...((tournament.schedule_config ?? {}) as Partial<typeof DEFAULTS>) };
+
+  // Matchup rules stored alongside the slot config.
+  type Matchup = { a: string; b: string; type: "forbid" | "force" | "separate" };
+  const matchups =
+    ((tournament.schedule_config ?? {}) as { matchups?: Matchup[] }).matchups ?? [];
+  const teamsByDiv = divList.map((d) => ({
+    div: d,
+    teams: teamList.filter((t) => t.division_id === d.id),
+  }));
+  const noDivTeams = teamList.filter((t) => !t.division_id);
+  const renderTeamOptions = () => (
+    <>
+      {teamsByDiv.map(({ div, teams }) =>
+        teams.length ? (
+          <optgroup key={div.id} label={div.name}>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </optgroup>
+        ) : null
+      )}
+      {noDivTeams.length ? (
+        <optgroup label="No division">
+          {noDivTeams.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </optgroup>
+      ) : null}
+    </>
+  );
+  const MATCHUP_LABEL: Record<Matchup["type"], string> = {
+    forbid: "never play",
+    force: "must meet in pool",
+    separate: "never at the same time",
+  };
 
   // Games the constraints left unplaced (only meaningful once a schedule exists).
   const unplaced = (games ?? []).filter((g) => !g.scheduled_at || !g.field_id);
@@ -203,6 +244,81 @@ export default async function SchedulingPage({
         </div>
         <Badge tone="muted">Fields tab</Badge>
       </div>
+
+      {/* 5 · Matchup rules */}
+      <Eyebrow className="mt-7 mb-3">Matchup rules</Eyebrow>
+      <p className="-mt-1 mb-3 text-[12px] text-muted">
+        Force or forbid a pairing within a division, or keep two teams (e.g. a shared
+        coach) off the same time slot even across divisions.
+      </p>
+
+      {teamList.length < 2 ? (
+        <p className="text-[13px] text-muted">Add at least two teams first.</p>
+      ) : (
+        <>
+          <Card>
+            <form action={addMatchup} className="flex flex-col gap-3">
+              <input type="hidden" name="tournament_id" value={id} />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Team">
+                  <select name="team_a" className={inputClass} defaultValue="">
+                    <option value="" disabled>
+                      Pick a team
+                    </option>
+                    {renderTeamOptions()}
+                  </select>
+                </Field>
+                <Field label="Other team">
+                  <select name="team_b" className={inputClass} defaultValue="">
+                    <option value="" disabled>
+                      Pick a team
+                    </option>
+                    {renderTeamOptions()}
+                  </select>
+                </Field>
+              </div>
+              <Field label="Rule">
+                <select name="type" className={inputClass} defaultValue="forbid">
+                  <option value="forbid">Never play each other (same division)</option>
+                  <option value="force">Must meet in pool play (same division)</option>
+                  <option value="separate">Never at the same time (any division)</option>
+                </select>
+              </Field>
+              <Button type="submit" variant="ink" className="w-full">
+                Add rule
+              </Button>
+            </form>
+          </Card>
+
+          {matchups.length > 0 && (
+            <div className="mt-3 flex flex-col gap-2">
+              {matchups.map((m, i) => {
+                const an = teamName.get(m.a) ?? "—";
+                const bn = teamName.get(m.b) ?? "—";
+                return (
+                  <div
+                    key={`${m.a}-${m.b}-${m.type}-${i}`}
+                    className="flex items-center justify-between rounded-xl border border-faint px-3.5 py-2.5"
+                  >
+                    <div className="text-[13px]">
+                      <span className="font-bold">{an}</span>{" "}
+                      <span className="text-muted">{MATCHUP_LABEL[m.type]}</span>{" "}
+                      <span className="font-bold">{bn}</span>
+                    </div>
+                    <form action={removeMatchup}>
+                      <input type="hidden" name="tournament_id" value={id} />
+                      <input type="hidden" name="index" value={i} />
+                      <button type="submit" className="text-[12px] font-bold text-muted hover:text-danger">
+                        Remove
+                      </button>
+                    </form>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
 
       {/* Regenerate */}
       <form action={regenerateWithConstraints} className="mt-7">

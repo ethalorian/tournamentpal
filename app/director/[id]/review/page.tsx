@@ -70,6 +70,12 @@ export default async function ReviewStep({ params }: { params: Promise<{ id: str
               Generate schedule
             </Button>
           </form>
+          <Link
+            href={`/director/${id}/scheduling`}
+            className="mt-3 block text-center text-[12px] font-bold text-muted underline"
+          >
+            Set time, field &amp; matchup restrictions first →
+          </Link>
         </Card>
       ) : (
         <>

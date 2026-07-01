@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildPools,
+  applyPoolMatchups,
   roundRobin,
   bracketSeedOrder,
   buildSingleElim,
@@ -112,6 +113,47 @@ test("assignSchedule: team availability is a hard limit", () => {
     divisionWindows: new Map(),
   });
   assert.ok(out[0].scheduledAt && minsOfDay(out[0].scheduledAt) >= 13 * 60);
+});
+
+test("applyPoolMatchups: force co-locates a pair in one pool", () => {
+  const pools = [
+    { name: "Pool A", teams: [{ id: "t1", name: "1" }, { id: "t2", name: "2" }] },
+    { name: "Pool B", teams: [{ id: "t3", name: "3" }, { id: "t4", name: "4" }] },
+  ];
+  const out = applyPoolMatchups(pools, [["t1", "t3"]], []);
+  const poolOf = (id: string) => out.findIndex((p) => p.teams.some((t) => t.id === id));
+  assert.equal(poolOf("t1"), poolOf("t3"), "forced pair should share a pool");
+  // Sizes preserved.
+  assert.deepEqual(out.map((p) => p.teams.length).sort(), [2, 2]);
+});
+
+test("applyPoolMatchups: forbid splits a pair across pools", () => {
+  const pools = [
+    { name: "Pool A", teams: [{ id: "t1", name: "1" }, { id: "t3", name: "3" }] },
+    { name: "Pool B", teams: [{ id: "t2", name: "2" }, { id: "t4", name: "4" }] },
+  ];
+  const out = applyPoolMatchups(pools, [], [["t1", "t3"]]);
+  const poolOf = (id: string) => out.findIndex((p) => p.teams.some((t) => t.id === id));
+  assert.notEqual(poolOf("t1"), poolOf("t3"), "forbidden pair should be in different pools");
+  assert.deepEqual(out.map((p) => p.teams.length).sort(), [2, 2]);
+});
+
+test("assignSchedule: separated teams never share a time slot", () => {
+  const games: ConstrainedGame[] = [
+    { key: "a", stage: "pool", round: 1, homeTeamId: "t1", awayTeamId: "t2", divisionId: null },
+    { key: "b", stage: "pool", round: 1, homeTeamId: "t3", awayTeamId: "t4", divisionId: null },
+  ];
+  const out = assignSchedule(games, F2, {
+    slot: SLOT,
+    teamConstraints: new Map(),
+    divisionWindows: new Map(),
+    separations: new Map([
+      ["t1", new Set(["t3"])],
+      ["t3", new Set(["t1"])],
+    ]),
+  });
+  assert.ok(out[0].scheduledAt && out[1].scheduledAt, "both placed");
+  assert.notEqual(out[0].scheduledAt, out[1].scheduledAt, "separated games must differ in time");
 });
 
 test("assignSchedule: impossible restriction flags unplaced", () => {
