@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { regenerateSchedule, advanceBracket } from "@/lib/schedule-builder";
+import { geocodePlace } from "@/lib/geocode";
 import { notifyFollowers } from "@/lib/notify";
 import { computeStandings, DEFAULT_RULES } from "@/lib/engine/standings";
 import { bracketSeedOrder } from "@/lib/engine/schedule";
@@ -32,13 +33,22 @@ export async function createTournamentDraft(formData: FormData) {
 
   if (!name) throw new Error("Your event needs a name.");
 
+  // Prefer coordinates chosen via Places Autocomplete; otherwise geocode the
+  // typed text server-side (best-effort).
+  const clat = parseFloat(String(formData.get("lat") ?? ""));
+  const clng = parseFloat(String(formData.get("lng") ?? ""));
+  const hasCoords = Number.isFinite(clat) && Number.isFinite(clng);
+  const geo = !hasCoords && location ? await geocodePlace(location) : null;
+
   const { data: tournament, error } = await supabase
     .from("tournaments")
     .insert({
       director_id: user.id,
       name,
       sport: sport === "baseball" ? "baseball" : "softball",
-      location: location || null,
+      location: (geo?.address ?? location) || null,
+      lat: hasCoords ? clat : geo?.lat ?? null,
+      lng: hasCoords ? clng : geo?.lng ?? null,
       start_date,
       end_date,
       status: "draft",
@@ -187,10 +197,22 @@ export async function addField(formData: FormData) {
   let siteId: string | null = null;
   const siteName = String(formData.get("site_name") ?? "").trim();
   const address = String(formData.get("address") ?? "").trim();
-  if (siteName) {
+  const clat = parseFloat(String(formData.get("lat") ?? ""));
+  const clng = parseFloat(String(formData.get("lng") ?? ""));
+  const hasCoords = Number.isFinite(clat) && Number.isFinite(clng);
+  const placeName = String(formData.get("place_name") ?? "").trim();
+  if (siteName || address) {
+    // Prefer the Places Autocomplete selection; geocode as a fallback.
+    const geo = !hasCoords ? await geocodePlace(address || siteName) : null;
     const { data: site } = await supabase
       .from("sites")
-      .insert({ tournament_id: tournamentId, name: siteName, address: address || null })
+      .insert({
+        tournament_id: tournamentId,
+        name: siteName || placeName || geo?.name || "Site",
+        address: (geo?.address ?? address) || null,
+        lat: hasCoords ? clat : geo?.lat ?? null,
+        lng: hasCoords ? clng : geo?.lng ?? null,
+      })
       .select()
       .single();
     siteId = site?.id ?? null;

@@ -1,6 +1,7 @@
 import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { Stepper } from "@/components/Stepper";
 import { Field, inputClass, Button } from "@/components/ui";
+import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { createTournamentDraft } from "@/app/director/actions";
 
 export default function NewTournamentPage() {
@@ -38,8 +39,8 @@ export default function NewTournamentPage() {
           </div>
         </Field>
 
-        <Field label="Location">
-          <input name="location" className={inputClass} placeholder="Tigard, OR" />
+        <Field label="Location" hint="Start typing your city or venue and pick a suggestion.">
+          <PlacesAutocomplete name="location" placeholder="Tigard, OR" />
         </Field>
 
         <div className="grid grid-cols-2 gap-3">

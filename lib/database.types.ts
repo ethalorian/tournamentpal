@@ -362,6 +362,8 @@ export type Database = {
           hold_note: string | null
           hold_until: string | null
           hold_set_at: string | null
+          lat: number | null
+          lng: number | null
         }
         Insert: {
           created_at?: string
@@ -379,6 +381,8 @@ export type Database = {
           hold_note?: string | null
           hold_until?: string | null
           hold_set_at?: string | null
+          lat?: number | null
+          lng?: number | null
         }
         Update: {
           created_at?: string
@@ -396,6 +400,8 @@ export type Database = {
           hold_note?: string | null
           hold_until?: string | null
           hold_set_at?: string | null
+          lat?: number | null
+          lng?: number | null
         }
         Relationships: []
       }

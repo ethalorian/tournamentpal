@@ -4,6 +4,7 @@ import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { TournamentNav } from "@/components/TournamentNav";
 import { Stepper } from "@/components/Stepper";
 import { Eyebrow, Field, inputClass, Button, EmptyState, Badge, Card } from "@/components/ui";
+import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { addField } from "@/app/director/actions";
 
 export const dynamic = "force-dynamic";
@@ -77,8 +78,8 @@ export default async function FieldsPage({ params }: { params: Promise<{ id: str
               <input name="fence_distance" type="number" inputMode="numeric" className={inputClass} placeholder="200" />
             </Field>
           </div>
-          <Field label="Address">
-            <input name="address" className={inputClass} placeholder="17005 SW 92nd Ave, Tigard OR" />
+          <Field label="Address or park name" hint="Start typing and pick a suggestion to pin the exact spot for directions.">
+            <PlacesAutocomplete name="address" placeNameField="place_name" placeholder="Cook Park, Tigard OR" />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Surface">
