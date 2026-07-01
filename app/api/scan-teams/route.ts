@@ -117,8 +117,23 @@ export async function POST(request: NextRequest) {
   }
 
   if (!res.ok) {
+    // Surface Anthropic's real error so misconfig (bad key, model, etc.) is
+    // debuggable instead of a generic message. Logged server-side, and a short
+    // detail is returned to this director-only endpoint.
+    let detail = "";
+    try {
+      const err = await res.json();
+      detail = err?.error?.message || err?.message || "";
+    } catch {
+      detail = await res.text().catch(() => "");
+    }
+    console.error(
+      `[scan-teams] Anthropic ${res.status}: ${detail || "(no detail)"}`
+    );
     return NextResponse.json(
-      { error: "The vision service returned an error. Try again." },
+      {
+        error: `Vision service error (${res.status}): ${detail || "no detail"}`,
+      },
       { status: 502 }
     );
   }
