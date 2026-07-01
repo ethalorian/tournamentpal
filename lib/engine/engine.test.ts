@@ -170,6 +170,49 @@ test("assignSchedule: a window's division tag confines who plays then", () => {
   assert.ok(minsOfDay(out[0].scheduledAt!) >= 9 * 60 + 30, "18U pushed past the 16U-only 8:00 window");
 });
 
+test("assignSchedule: per-day grid limits start time and window count", () => {
+  // Day starts at 10:00 with only 2 windows; a 3rd game can't be placed.
+  const games: ConstrainedGame[] = Array.from({ length: 3 }, (_, i) => ({
+    key: `g${i}`,
+    stage: "pool" as const,
+    round: 1,
+    homeTeamId: `h${i}`,
+    awayTeamId: `a${i}`,
+    divisionId: null,
+  }));
+  const out = assignSchedule(games, [{ id: "f1", name: "F1", allowedDivisions: [] }], {
+    slot: SLOT,
+    teamConstraints: new Map(),
+    divisionWindows: new Map(),
+    dayGrids: new Map([["2026-07-01", { startMin: 10 * 60, windows: 2 }]]),
+  });
+  const placed = out.filter((g) => g.scheduledAt);
+  assert.equal(placed.length, 2, "only 2 windows available");
+  for (const g of placed) assert.ok(minsOfDay(g.scheduledAt!) >= 10 * 60, "starts at/after 10:00");
+});
+
+test("assignSchedule: pool day rejects bracket games", () => {
+  const SLOT2 = { ...SLOT, days: ["2026-07-01", "2026-07-02"] };
+  const games: ConstrainedGame[] = [
+    { key: "p", stage: "pool", round: 1, homeTeamId: "t1", awayTeamId: "t2", divisionId: null },
+    { key: "b", stage: "bracket", round: 1, homeTeamId: "t3", awayTeamId: "t4", divisionId: null },
+  ];
+  const out = assignSchedule(games, F2, {
+    slot: SLOT2,
+    teamConstraints: new Map(),
+    divisionWindows: new Map(),
+    dayStages: new Map([
+      ["2026-07-01", "pool"],
+      ["2026-07-02", "bracket"],
+    ]),
+  });
+  const pool = out.find((g) => g.key === "p")!;
+  const bracket = out.find((g) => g.key === "b")!;
+  assert.ok(pool.scheduledAt!.startsWith("2026-07-01"), "pool game on day 1");
+  // Bracket can't be on day 1 (pool-only); must land on day 2.
+  assert.ok(bracket.scheduledAt && !bracket.scheduledAt.startsWith("2026-07-01"), "bracket off the pool day");
+});
+
 test("assignSchedule: separated teams never share a time slot", () => {
   const games: ConstrainedGame[] = [
     { key: "a", stage: "pool", round: 1, homeTeamId: "t1", awayTeamId: "t2", divisionId: null },

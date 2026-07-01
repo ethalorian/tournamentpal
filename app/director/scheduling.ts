@@ -127,6 +127,45 @@ export async function saveTeamConstraints(formData: FormData) {
   revalidatePath(`/director/${tournamentId}/scheduling`);
 }
 
+/** Save each day's slot grid: when the first game starts + number of windows. */
+export async function saveDayGrids(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const days = String(formData.get("days") ?? "").split(",").filter(Boolean);
+  const dayGrids: Record<string, { start: string; windows: number }> = {};
+  for (const day of days) {
+    const start = clean(formData.get(`start:${day}`));
+    const windows = Math.round(Number(formData.get(`windows:${day}`)));
+    if (start && Number.isFinite(windows) && windows > 0) {
+      dayGrids[day] = { start, windows: Math.min(20, windows) };
+    }
+  }
+  const config = await readScheduleConfig(supabase, tournamentId);
+  await supabase
+    .from("tournaments")
+    .update({ schedule_config: { ...config, dayGrids } } as never)
+    .eq("id", tournamentId);
+  revalidatePath(`/director/${tournamentId}/scheduling`);
+}
+
+/** Tag each tournament day as pool play, elimination, or both. */
+export async function saveDayStages(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const days = String(formData.get("days") ?? "").split(",").filter(Boolean);
+  const dayStages: Record<string, "pool" | "bracket"> = {};
+  for (const day of days) {
+    const v = String(formData.get(`stage:${day}`) ?? "");
+    if (v === "pool" || v === "bracket") dayStages[day] = v; // "both"/blank omitted
+  }
+  const config = await readScheduleConfig(supabase, tournamentId);
+  await supabase
+    .from("tournaments")
+    .update({ schedule_config: { ...config, dayStages } } as never)
+    .eq("id", tournamentId);
+  revalidatePath(`/director/${tournamentId}/scheduling`);
+}
+
 /** Save the painted per-window division assignments. */
 export async function saveGameWindows(formData: FormData) {
   const { supabase } = await client();

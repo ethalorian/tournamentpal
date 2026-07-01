@@ -399,6 +399,12 @@ export function assignSchedule<G extends ConstrainedGame>(
     // Per-window division allowlist, keyed `${day}__${timeMin}` → division names.
     // A window with entries only admits those divisions; absent/empty = open.
     windowDivisions?: Map<string, string[]>;
+    // Per-day stage restriction, keyed by day ("YYYY-MM-DD") → "pool" | "bracket".
+    // Days not listed allow both stages.
+    dayStages?: Map<string, "pool" | "bracket">;
+    // Per-day slot grid override: when pool play starts (minutes from midnight)
+    // and how many windows that day. Days not listed use the uniform window.
+    dayGrids?: Map<string, { startMin: number; windows: number }>;
   }
 ): (G & { fieldId: string | null; scheduledAt: string | null; conflict: string | null })[] {
   const { gameLengthMins: gLen, bufferMins, dayStartMin, dayEndMin } = opts.slot;
@@ -409,8 +415,18 @@ export function assignSchedule<G extends ConstrainedGame>(
   const tz = opts.slot.timeZone || "UTC";
   const slots: { ms: number; timeMin: number; day: string }[] = [];
   for (const day of opts.slot.days) {
-    for (let t = dayStartMin; t + gLen <= dayEndMin; t += step) {
-      slots.push({ ms: wallTimeToUtcMs(day, t, tz), timeMin: t, day });
+    const grid = opts.dayGrids?.get(day);
+    if (grid) {
+      // Fixed number of windows from a per-day start time.
+      for (let n = 0; n < grid.windows; n++) {
+        const t = grid.startMin + n * step;
+        if (t + gLen > 24 * 60) break;
+        slots.push({ ms: wallTimeToUtcMs(day, t, tz), timeMin: t, day });
+      }
+    } else {
+      for (let t = dayStartMin; t + gLen <= dayEndMin; t += step) {
+        slots.push({ ms: wallTimeToUtcMs(day, t, tz), timeMin: t, day });
+      }
     }
   }
   slots.sort((a, b) => a.ms - b.ms);
@@ -468,6 +484,13 @@ export function assignSchedule<G extends ConstrainedGame>(
         if (opts.windowDivisions && g.divisionName) {
           const allowed = opts.windowDivisions.get(`${slots[si].day}__${timeMin}`);
           if (allowed && allowed.length > 0 && !allowed.includes(g.divisionName)) continue;
+        }
+
+        // Per-day stage: pool-play days only take pool games, elimination days
+        // only take bracket games. Untagged days take both.
+        if (opts.dayStages) {
+          const dayStage = opts.dayStages.get(slots[si].day);
+          if (dayStage && dayStage !== g.stage) continue;
         }
 
         // A team can't already be playing in this slot.

@@ -147,6 +147,29 @@ export async function addScannedTeams(formData: FormData) {
     }
     const key = norm(label);
     let divId = byNorm.get(key) ?? null;
+
+    // Fold a more specific scanned label into a pre-existing division of the
+    // same age group — e.g. "16U Open" should load into your "16U" rather than
+    // create a near-duplicate. Match when one normalized name is a prefix of the
+    // other, preferring the broader existing division as the stem.
+    if (!divId) {
+      const cand = divs
+        .filter((d) => {
+          const dn = norm(d.name);
+          return dn.length > 0 && (key.startsWith(dn) || dn.startsWith(key));
+        })
+        .sort((a, b) => {
+          const an = norm(a.name);
+          const bn = norm(b.name);
+          const aPref = key.startsWith(an) ? 1 : 0;
+          const bPref = key.startsWith(bn) ? 1 : 0;
+          if (aPref !== bPref) return bPref - aPref;
+          return bn.length - an.length;
+        });
+      if (cand.length > 0) divId = cand[0].id;
+    }
+
+    // No existing division fits — create one from the scanned label.
     if (!divId) {
       const { data: created } = await supabase
         .from("divisions")
@@ -154,7 +177,10 @@ export async function addScannedTeams(formData: FormData) {
         .select("id")
         .single();
       divId = created?.id ?? null;
-      if (divId) byNorm.set(key, divId);
+      if (divId) {
+        byNorm.set(key, divId);
+        divs.push({ id: divId, name: label, sort: maxSort });
+      }
     }
     resolved.push(divId);
   }

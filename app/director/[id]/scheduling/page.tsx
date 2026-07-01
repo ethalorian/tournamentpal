@@ -11,6 +11,8 @@ import {
   addMatchup,
   removeMatchup,
   saveGameWindows,
+  saveDayStages,
+  saveDayGrids,
 } from "@/app/director/scheduling";
 
 export const dynamic = "force-dynamic";
@@ -110,14 +112,35 @@ export default async function SchedulingPage({
   const winStart = toMin(cfg.dayStart);
   const winEnd = toMin(cfg.dayEnd);
   const gLen = cfg.gameLengthMins || 90;
+  // Default number of windows implied by the global playing window.
+  const defaultWindows = Math.max(1, Math.floor((winEnd - winStart - gLen) / winStep) + 1);
+  const savedDayGrids =
+    ((tournament.schedule_config ?? {}) as {
+      dayGrids?: Record<string, { start?: string; windows?: number }>;
+    }).dayGrids ?? {};
+  const gridFor = (day: string) => {
+    const g = savedDayGrids[day];
+    const start = g?.start ?? cfg.dayStart;
+    const windows = g?.windows && g.windows > 0 ? g.windows : defaultWindows;
+    return { start, windows, startMin: toMin(start) };
+  };
   const windowDays = enumerateDays(tournament.start_date, tournament.end_date).map((day) => {
+    const { start, windows, startMin } = gridFor(day);
     const blocks: { key: string; label: string }[] = [];
-    for (let t = winStart; t + gLen <= winEnd; t += winStep) {
+    for (let n = 0; n < windows; n++) {
+      const t = startMin + n * winStep;
+      if (t + gLen > 24 * 60) break;
       blocks.push({ key: `${day}__${t}`, label: fmtMin(t) });
     }
-    return { day, blocks };
+    return { day, blocks, start, windows };
   });
   const allWindowKeys = windowDays.flatMap((d) => d.blocks.map((b) => b.key));
+
+  // Per-day pool/elimination tags.
+  const savedDayStages =
+    ((tournament.schedule_config ?? {}) as { dayStages?: Record<string, "pool" | "bracket"> })
+      .dayStages ?? {};
+  const scheduleDays = windowDays.map((d) => d.day);
 
   // Games the constraints left unplaced (only meaningful once a schedule exists).
   const unplaced = (games ?? []).filter((g) => !g.scheduled_at || !g.field_id);
@@ -191,6 +214,47 @@ export default async function SchedulingPage({
         </form>
       </Card>
 
+      {/* 1b · Pool vs elimination days */}
+      {scheduleDays.length >= 2 && (
+        <>
+          <Eyebrow className="mt-7 mb-3">Pool &amp; elimination days</Eyebrow>
+          <p className="-mt-1 mb-3 text-[12px] text-muted">
+            Split a multi-day event — e.g. pool play Saturday, brackets Sunday. Days left
+            on &ldquo;Both&rdquo; can host either.
+          </p>
+          <Card>
+            <form action={saveDayStages} className="flex flex-col gap-3">
+              <input type="hidden" name="tournament_id" value={id} />
+              <input type="hidden" name="days" value={scheduleDays.join(",")} />
+              {scheduleDays.map((day) => (
+                <div key={day} className="flex items-center justify-between gap-3">
+                  <span className="text-[13px] font-bold">
+                    {new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    })}
+                  </span>
+                  <select
+                    name={`stage:${day}`}
+                    defaultValue={savedDayStages[day] ?? "both"}
+                    className={`${inputClass} w-40`}
+                  >
+                    <option value="both">Both</option>
+                    <option value="pool">Pool play only</option>
+                    <option value="bracket">Elimination only</option>
+                  </select>
+                </div>
+              ))}
+              <Button type="submit" variant="ink" className="w-full">
+                Save day types
+              </Button>
+            </form>
+          </Card>
+        </>
+      )}
+
       {/* 2 · Division windows */}
       {divList.length > 0 && (
         <>
@@ -221,16 +285,65 @@ export default async function SchedulingPage({
         </>
       )}
 
-      {/* 2b · Game windows painted by division */}
-      {divList.length > 0 && allWindowKeys.length > 0 && (
+      {/* 2b · Game windows: per-day grid + division painting */}
+      {scheduleDays.length > 0 && (
         <>
-          <Eyebrow className="mt-7 mb-3">Game windows by division</Eyebrow>
+          <Eyebrow className="mt-7 mb-3">Game windows</Eyebrow>
           <p className="-mt-1 mb-3 text-[12px] text-muted">
-            Tag each time block with the divisions allowed to play then — e.g. give 16U
-            the first two blocks and 18U the third. Leave a block untagged to open it to
-            all divisions.
+            Set when the first game starts each day and how many windows there are — then
+            (optionally) tag which divisions play in each window.
           </p>
+
+          {/* Per-day start time + number of windows */}
           <Card>
+            <div className="display text-[14px]">Each day&rsquo;s windows</div>
+            <p className="mt-1 text-[12px] text-muted">
+              First-game time and how many {gLen}-minute windows run that day.
+            </p>
+            <form action={saveDayGrids} className="mt-3 flex flex-col gap-3">
+              <input type="hidden" name="tournament_id" value={id} />
+              <input type="hidden" name="days" value={scheduleDays.join(",")} />
+              {windowDays.map(({ day, start, windows }) => (
+                <div key={day} className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-bold">
+                    {new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    })}
+                  </span>
+                  <label className="flex items-center gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-muted">Start</span>
+                    <input
+                      name={`start:${day}`}
+                      type="time"
+                      defaultValue={start}
+                      className={`${inputClass} w-28`}
+                    />
+                  </label>
+                  <label className="flex items-center gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-muted">×</span>
+                    <input
+                      name={`windows:${day}`}
+                      type="number"
+                      min={1}
+                      max={20}
+                      defaultValue={windows}
+                      className={`${inputClass} w-16`}
+                    />
+                  </label>
+                </div>
+              ))}
+              <Button type="submit" variant="ink" className="w-full">
+                Save day windows
+              </Button>
+            </form>
+          </Card>
+
+          {divList.length > 0 && allWindowKeys.length > 0 && (
+          <Card className="mt-3">
+            <div className="display mb-3 text-[14px]">Paint divisions onto windows</div>
             <form action={saveGameWindows} className="flex flex-col gap-4">
               <input type="hidden" name="tournament_id" value={id} />
               <input type="hidden" name="keys" value={allWindowKeys.join(",")} />
@@ -274,6 +387,7 @@ export default async function SchedulingPage({
               </Button>
             </form>
           </Card>
+          )}
         </>
       )}
 

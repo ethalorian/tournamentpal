@@ -4,6 +4,7 @@ import { Field, inputClass, Button } from "@/components/ui";
 import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { DivisionPicker } from "@/components/DivisionPicker";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
+import { DateRangePicker } from "@/components/DateRangePicker";
 import { createTournamentDraft } from "@/app/director/actions";
 
 export default function NewTournamentPage() {
@@ -49,14 +50,9 @@ export default function NewTournamentPage() {
           <TimezoneSelect />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Start date">
-            <input name="start_date" type="date" className={inputClass} />
-          </Field>
-          <Field label="End date">
-            <input name="end_date" type="date" className={inputClass} />
-          </Field>
-        </div>
+        <Field label="Tournament dates" hint="Tap the first day, then the last day.">
+          <DateRangePicker />
+        </Field>
 
         <Field label="Age divisions">
           <DivisionPicker />

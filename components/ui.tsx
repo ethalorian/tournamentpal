@@ -183,7 +183,7 @@ export function Field({
 }
 
 export const inputClass =
-  "w-full rounded-xl border border-faint bg-haze px-4 py-3 text-[15px] text-ink outline-none focus:border-ink placeholder:text-muted";
+  "w-full min-w-0 rounded-xl border border-faint bg-haze px-4 py-3 text-[15px] text-ink outline-none focus:border-ink placeholder:text-muted";
 
 /* ------------------------- Empty / messages ------------------------ */
 

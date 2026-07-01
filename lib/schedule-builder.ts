@@ -160,6 +160,26 @@ export async function regenerateSchedule(
     ((tournament.schedule_config ?? {}) as { windows?: Record<string, string[]> }).windows ?? {};
   const windowDivisions = new Map<string, string[]>(Object.entries(windowsObj));
 
+  // Per-day stage tags: which days host pool play vs elimination.
+  const dayStagesObj =
+    ((tournament.schedule_config ?? {}) as { dayStages?: Record<string, "pool" | "bracket"> })
+      .dayStages ?? {};
+  const dayStages = new Map<string, "pool" | "bracket">(Object.entries(dayStagesObj));
+
+  // Per-day grid: start time + number of windows. Stored as { start, windows }.
+  const dayGridsObj =
+    ((tournament.schedule_config ?? {}) as {
+      dayGrids?: Record<string, { start?: string; windows?: number }>;
+    }).dayGrids ?? {};
+  const dayGrids = new Map<string, { startMin: number; windows: number }>();
+  for (const [day, g] of Object.entries(dayGridsObj)) {
+    const startMin = hhmmToMinutes(g.start ?? null);
+    const windows = Number(g.windows);
+    if (startMin != null && Number.isFinite(windows) && windows > 0) {
+      dayGrids.set(day, { startMin, windows });
+    }
+  }
+
   // Plan every division's games first, then place them all together so fields
   // are never double-booked across divisions.
   const planned: ConstrainedGame[] = [];
@@ -241,6 +261,8 @@ export async function regenerateSchedule(
     divisionWindows,
     separations,
     windowDivisions,
+    dayStages,
+    dayGrids,
   });
 
   const gameRows: Database["public"]["Tables"]["games"]["Insert"][] = [];
