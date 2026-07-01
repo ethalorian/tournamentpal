@@ -30,7 +30,12 @@ export default async function PublicSchedule({ params }: { params: Promise<{ id:
   }
 
   return (
-    <FollowerShell id={id} tournamentName={tournament.name} dayLabel={dayLabel(tournament)}>
+    <FollowerShell
+      id={id}
+      tournamentName={tournament.name}
+      dayLabel={dayLabel(tournament)}
+      hold={{ status: tournament.hold_status, note: tournament.hold_note, until: tournament.hold_until }}
+    >
       <h2 className="display -mt-2 mb-4 text-[18px] text-muted">Full schedule</h2>
 
       {(!games || games.length === 0) && <EmptyState title="No games scheduled yet" />}

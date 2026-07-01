@@ -56,6 +56,7 @@ export function ScoreEntry({
   homeStart,
   awayStart,
   isCorrection,
+  returnTo,
 }: {
   tournamentId: string;
   gameId: string;
@@ -64,6 +65,7 @@ export function ScoreEntry({
   homeStart: number;
   awayStart: number;
   isCorrection: boolean;
+  returnTo?: string;
 }) {
   const [home, setHome] = useState(homeStart);
   const [away, setAway] = useState(awayStart);
@@ -75,6 +77,7 @@ export function ScoreEntry({
       <input type="hidden" name="home_score" value={home} />
       <input type="hidden" name="away_score" value={away} />
       {isCorrection && <input type="hidden" name="correction" value="1" />}
+      {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
 
       <div className="grid grid-cols-2 gap-3">
         <Stepper team={homeName} value={home} setValue={setHome} />

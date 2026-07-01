@@ -42,3 +42,18 @@ export async function toggleFollow(formData: FormData) {
   revalidatePath(returnTo);
   revalidatePath(`/t/${tournamentId}`);
 }
+
+/** A follower saves the mobile number their score texts go to. */
+export async function setFollowerPhone(formData: FormData) {
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const phone = String(formData.get("phone") ?? "").trim();
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(`/login?next=/t/${tournamentId}`);
+
+  await supabase.from("profiles").update({ phone: phone || null }).eq("id", user.id);
+  revalidatePath(`/t/${tournamentId}`);
+}

@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { loadOwnedTournament } from "@/lib/tournament";
 import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { TournamentNav } from "@/components/TournamentNav";
+import { Stepper } from "@/components/Stepper";
 import { Eyebrow, Field, inputClass, Button, EmptyState, Badge, Card } from "@/components/ui";
 import { addField } from "@/app/director/actions";
 
@@ -8,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function FieldsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { supabase } = await loadOwnedTournament(id);
+  const { tournament, supabase } = await loadOwnedTournament(id);
 
   const [{ data: fields }, { data: sites }, { data: divisions }] = await Promise.all([
     supabase.from("fields").select("*").eq("tournament_id", id).order("name"),
@@ -19,19 +21,19 @@ export default async function FieldsPage({ params }: { params: Promise<{ id: str
   const fieldList = fields ?? [];
   const divList = divisions ?? [];
 
-  return (
-    <DirectorShell>
-      <BackLink href={`/director/${id}`} />
-      <h1 className="display mt-3 text-[26px]">Fields &amp; locations</h1>
-      <TournamentNav id={id} />
+  // During initial setup (draft) Fields is a wizard step; afterwards it's a
+  // management screen reached from the tournament nav.
+  const isWizard = tournament.status === "draft";
 
+  const body = (
+    <>
       <Eyebrow className="mt-6 mb-3">
         {fieldList.length} {fieldList.length === 1 ? "field" : "fields"}
       </Eyebrow>
       {fieldList.length === 0 ? (
         <EmptyState title="No fields yet" body="Add a field so the scheduler has somewhere to place games." />
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 md:grid md:grid-cols-2">
           {fieldList.map((f) => (
             <div key={f.id} className="rounded-2xl border border-faint p-4">
               <div className="flex items-center justify-between">
@@ -44,7 +46,7 @@ export default async function FieldsPage({ params }: { params: Promise<{ id: str
               <div className="mt-1 text-[12px] text-muted">
                 {f.site_id ? siteName.get(f.site_id) : "No site"} · {f.surface ?? "grass"}
               </div>
-              {f.allowed_divisions.length > 0 && (
+              {f.allowed_divisions.length > 0 ? (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {f.allowed_divisions.map((d) => (
                     <Badge key={d} tone="accent">
@@ -52,8 +54,7 @@ export default async function FieldsPage({ params }: { params: Promise<{ id: str
                     </Badge>
                   ))}
                 </div>
-              )}
-              {f.allowed_divisions.length === 0 && (
+              ) : (
                 <div className="mt-2 text-[11px] text-muted">Open to all divisions</div>
               )}
             </div>
@@ -113,6 +114,47 @@ export default async function FieldsPage({ params }: { params: Promise<{ id: str
           </Button>
         </form>
       </Card>
+    </>
+  );
+
+  if (isWizard) {
+    return (
+      <DirectorShell showTabs={false}>
+        <BackLink href={`/director/${id}/teams`} label="Teams" />
+        <div className="mt-4">
+          <Stepper step={3} total={5} label="Fields & locations" />
+        </div>
+        <h1 className="display mt-5 text-[26px]">Where are you playing?</h1>
+        <p className="mt-1.5 text-[13px] text-muted">
+          Add your diamonds before scheduling — the auto-scheduler places every
+          game across these fields.
+        </p>
+
+        {body}
+
+        {fieldList.length === 0 && (
+          <p className="mt-5 rounded-xl bg-accent/15 px-4 py-3 text-[12px] font-semibold text-ink">
+            Add at least one field so games can be scheduled.
+          </p>
+        )}
+        <Link
+          href={`/director/${id}/format`}
+          className="btn-accent mt-5 flex h-[54px] items-center justify-center rounded-2xl text-[16px]"
+          aria-disabled={fieldList.length === 0}
+          style={fieldList.length === 0 ? { opacity: 0.5, pointerEvents: "none" } : undefined}
+        >
+          Pick a format →
+        </Link>
+      </DirectorShell>
+    );
+  }
+
+  return (
+    <DirectorShell>
+      <BackLink href={`/director/${id}`} />
+      <h1 className="display mt-3 text-[26px]">Fields &amp; locations</h1>
+      <TournamentNav id={id} />
+      {body}
     </DirectorShell>
   );
 }

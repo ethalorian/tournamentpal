@@ -8,7 +8,7 @@ export default function NewTournamentPage() {
     <DirectorShell showTabs={false}>
       <BackLink href="/director" label="Cancel" />
       <div className="mt-4">
-        <Stepper step={1} label="Details" />
+        <Stepper step={1} total={5} label="Details" />
       </div>
 
       <h1 className="display mt-5 text-[26px]">The basics</h1>

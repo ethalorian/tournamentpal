@@ -9,6 +9,7 @@ import {
   assignFieldsAndTimes,
 } from "./schedule";
 import { computeStandings, DEFAULT_RULES } from "./standings";
+import { computeBracketAdvancement } from "./bracket";
 import { suggestPreset, getPreset } from "./presets";
 import type { EngineTeam, GameResult } from "./types";
 
@@ -158,6 +159,32 @@ test("computeStandings: ignores non-final games", () => {
   ];
   const s = computeStandings(t, games, DEFAULT_RULES);
   assert.equal(s[0].played, 0);
+});
+
+test("computeBracketAdvancement: winners flow into the final", () => {
+  const games = [
+    { id: "f1", round: 1, pos: 0, home_team_id: "t1", away_team_id: "t4", home_score: 5, away_score: 2, status: "final" },
+    { id: "f2", round: 1, pos: 1, home_team_id: "t2", away_team_id: "t3", home_score: 6, away_score: 1, status: "final" },
+    { id: "F", round: 2, pos: 0, home_team_id: null, away_team_id: null, home_score: null, away_score: null, status: "scheduled" },
+  ];
+  const updates = computeBracketAdvancement(games);
+  const finalUpdate = updates.find((u) => u.id === "F");
+  assert.ok(finalUpdate);
+  assert.equal(finalUpdate!.home_team_id, "t1");
+  assert.equal(finalUpdate!.away_team_id, "t2");
+});
+
+test("computeBracketAdvancement: no advance until a game is final", () => {
+  const games = [
+    { id: "f1", round: 1, pos: 0, home_team_id: "t1", away_team_id: "t4", home_score: null, away_score: null, status: "scheduled" },
+    { id: "f2", round: 1, pos: 1, home_team_id: "t2", away_team_id: "t3", home_score: 6, away_score: 1, status: "final" },
+    { id: "F", round: 2, pos: 0, home_team_id: null, away_team_id: null, home_score: null, away_score: null, status: "scheduled" },
+  ];
+  const updates = computeBracketAdvancement(games);
+  // Final's away is t2 (decided), home still null (f1 not final).
+  const f = updates.find((u) => u.id === "F");
+  assert.equal(f?.home_team_id ?? null, null);
+  assert.equal(f?.away_team_id, "t2");
 });
 
 test("suggestPreset: scales with team count", () => {

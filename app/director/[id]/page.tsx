@@ -63,6 +63,21 @@ export default async function TournamentOverview({ params }: { params: Promise<{
         </Card>
       ) : (
         <>
+          <Link
+            href={`/director/${id}/hold`}
+            className={`mt-4 flex items-center justify-between rounded-2xl p-4 ${
+              tournament.hold_status ? "border-2 border-danger bg-danger/10" : "border border-faint"
+            }`}
+          >
+            <div>
+              <div className="text-[11px] font-extrabold uppercase tracking-wider text-muted">Weather &amp; play</div>
+              <div className="display mt-1 text-[15px]">
+                {tournament.hold_status ? tournament.hold_status : "Running normally"}
+              </div>
+            </div>
+            {tournament.hold_status ? <Badge tone="danger">Resume</Badge> : <Badge tone="muted">Manage</Badge>}
+          </Link>
+
           <Eyebrow className="mt-6 mb-3">Up next</Eyebrow>
           {nextGame ? (
             <Link

@@ -12,6 +12,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      concessions: {
+        Row: {
+          id: string
+          tournament_id: string
+          name: string
+          price_cents: number
+          sold_out: boolean
+          sort: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tournament_id: string
+          name: string
+          price_cents?: number
+          sold_out?: boolean
+          sort?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tournament_id?: string
+          name?: string
+          price_cents?: number
+          sold_out?: boolean
+          sort?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: { id: string; user_id: string; endpoint: string; p256dh: string; auth: string; created_at: string }
+        Insert: { id?: string; user_id: string; endpoint: string; p256dh: string; auth: string; created_at?: string }
+        Update: { id?: string; user_id?: string; endpoint?: string; p256dh?: string; auth?: string; created_at?: string }
+        Relationships: []
+      }
+      tournament_members: {
+        Row: { tournament_id: string; user_id: string; role: string; created_at: string }
+        Insert: { tournament_id: string; user_id: string; role: string; created_at?: string }
+        Update: { tournament_id?: string; user_id?: string; role?: string; created_at?: string }
+        Relationships: []
+      }
+      sponsors: {
+        Row: {
+          id: string
+          tournament_id: string
+          name: string
+          url: string | null
+          tier: string
+          sort: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tournament_id: string
+          name: string
+          url?: string | null
+          tier?: string
+          sort?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tournament_id?: string
+          name?: string
+          url?: string | null
+          tier?: string
+          sort?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
       divisions: {
         Row: { created_at: string; id: string; name: string; sort: number; tournament_id: string }
         Insert: { created_at?: string; id?: string; name: string; sort?: number; tournament_id: string }
@@ -102,6 +174,7 @@ export type Database = {
           away_seed: number | null
           away_team_id: string | null
           bracket_slot: string | null
+          bracket_pos: number | null
           created_at: string
           division_id: string | null
           field_id: string | null
@@ -121,6 +194,7 @@ export type Database = {
           away_seed?: number | null
           away_team_id?: string | null
           bracket_slot?: string | null
+          bracket_pos?: number | null
           created_at?: string
           division_id?: string | null
           field_id?: string | null
@@ -140,6 +214,7 @@ export type Database = {
           away_seed?: number | null
           away_team_id?: string | null
           bracket_slot?: string | null
+          bracket_pos?: number | null
           created_at?: string
           division_id?: string | null
           field_id?: string | null
@@ -283,6 +358,10 @@ export type Database = {
           sport: string
           start_date: string | null
           status: string
+          hold_status: string | null
+          hold_note: string | null
+          hold_until: string | null
+          hold_set_at: string | null
         }
         Insert: {
           created_at?: string
@@ -296,6 +375,10 @@ export type Database = {
           sport?: string
           start_date?: string | null
           status?: string
+          hold_status?: string | null
+          hold_note?: string | null
+          hold_until?: string | null
+          hold_set_at?: string | null
         }
         Update: {
           created_at?: string
@@ -309,6 +392,10 @@ export type Database = {
           sport?: string
           start_date?: string | null
           status?: string
+          hold_status?: string | null
+          hold_note?: string | null
+          hold_until?: string | null
+          hold_set_at?: string | null
         }
         Relationships: []
       }
@@ -330,6 +417,15 @@ export type Database = {
           manager_is_me: boolean
         }[]
       }
+      follower_phones: { Args: { t_id: string }; Returns: string[] }
+      follower_push_subs: {
+        Args: { t_id: string }
+        Returns: { endpoint: string; p256dh: string; auth: string }[]
+      }
+      delete_push_subscription: { Args: { p_endpoint: string }; Returns: undefined }
+      is_member: { Args: { t_id: string }; Returns: boolean }
+      can_score: { Args: { t_id: string }; Returns: boolean }
+      add_staff_by_email: { Args: { t_id: string; p_email: string; p_role: string }; Returns: string }
     }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }

@@ -4,21 +4,27 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * Handles the email-confirmation link Supabase sends on sign up.
- * Verifies the token and forwards the user into the director area.
+ * Supports both flows:
+ *   - PKCE:  ...?code=<code>            → exchangeCodeForSession
+ *   - OTP:   ...?token_hash=&type=...   → verifyOtp
+ * On success the session cookie is set and the user is forwarded into the app.
  */
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get("code");
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
   const next = searchParams.get("next") ?? "/director";
 
-  if (token_hash && type) {
-    const supabase = await createClient();
+  const supabase = await createClient();
+
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) return NextResponse.redirect(new URL(next, origin));
+  } else if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
-    if (!error) {
-      return NextResponse.redirect(new URL(next, request.url));
-    }
+    if (!error) return NextResponse.redirect(new URL(next, origin));
   }
 
-  return NextResponse.redirect(new URL("/login?error=confirm", request.url));
+  return NextResponse.redirect(new URL("/login?error=confirm", origin));
 }

@@ -23,12 +23,13 @@ export default async function TeamsStep({ params }: { params: Promise<{ id: stri
     <DirectorShell showTabs={false}>
       <BackLink href="/director/new" label="Details" />
       <div className="mt-4">
-        <Stepper step={2} label="Add teams" />
+        <Stepper step={2} total={5} label="Add teams" />
       </div>
 
       <h1 className="display mt-5 text-[26px]">{tournament.name}</h1>
       <p className="mt-1.5 text-[13px] text-muted">
-        Paste one team per line. Seeds follow entry order — reorder later.
+        One team per line, or paste a CSV (first column is the team name). Seeds
+        follow entry order.
       </p>
 
       <form action={addTeams} className="mt-6 flex flex-col gap-4">
@@ -93,12 +94,12 @@ export default async function TeamsStep({ params }: { params: Promise<{ id: stri
       )}
 
       <Link
-        href={`/director/${id}/format`}
+        href={`/director/${id}/fields`}
         className="btn-accent mt-7 flex h-[54px] items-center justify-center rounded-2xl text-[16px]"
         aria-disabled={teamList.length < 3}
         style={teamList.length < 3 ? { opacity: 0.5, pointerEvents: "none" } : undefined}
       >
-        Pick a format →
+        Continue to fields →
       </Link>
     </DirectorShell>
   );

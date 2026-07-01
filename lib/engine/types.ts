@@ -47,6 +47,8 @@ export type PlannedGame = {
   key: string;
   stage: "pool" | "bracket";
   round: number;
+  /** 0-based position within a bracket round (for winner progression). */
+  pos?: number;
   poolName?: string;
   bracketSlot?: string;
   homeTeamId: string | null;

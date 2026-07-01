@@ -49,6 +49,9 @@ export default async function Home() {
             <Link href="/login" className="flex h-14 items-center justify-center rounded-2xl border border-white/25 text-[15px] font-bold">
               I already direct events
             </Link>
+            <Link href="/discover" className="mt-1 text-center text-[13px] font-semibold text-white/60">
+              Just following a team? Find an event →
+            </Link>
           </div>
           <ul className="mt-12 mb-10 flex flex-col gap-px overflow-hidden rounded-2xl border border-white/10">
             {FEATURES.map((f) => (
@@ -103,7 +106,9 @@ function DesktopHero18a({
         <div className="flex items-center gap-7 text-[13px] font-semibold text-white/70">
           <span className="hidden lg:inline">Features</span>
           <span className="hidden lg:inline">Pricing</span>
-          <span className="hidden lg:inline">For followers</span>
+          <Link href="/discover" className="hidden lg:inline hover:text-white">
+            For followers
+          </Link>
           <Link href={signInHref} className="rounded-[9px] border border-white/30 px-4 py-2 text-white">
             {loggedIn ? "Dashboard" : "Sign in"}
           </Link>

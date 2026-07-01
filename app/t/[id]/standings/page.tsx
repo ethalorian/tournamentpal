@@ -17,7 +17,12 @@ export default async function PublicStandings({ params }: { params: Promise<{ id
   const empty = tables.every((t) => t.rows.length === 0);
 
   return (
-    <FollowerShell id={id} tournamentName={tournament.name} dayLabel={dayLabel(tournament)}>
+    <FollowerShell
+      id={id}
+      tournamentName={tournament.name}
+      dayLabel={dayLabel(tournament)}
+      hold={{ status: tournament.hold_status, note: tournament.hold_note, until: tournament.hold_until }}
+    >
       <h2 className="display -mt-2 mb-4 text-[18px] text-muted">Standings</h2>
 
       {empty ? (

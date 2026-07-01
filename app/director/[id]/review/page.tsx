@@ -37,7 +37,7 @@ export default async function ReviewStep({ params }: { params: Promise<{ id: str
     <DirectorShell showTabs={false}>
       <BackLink href={`/director/${id}/format`} label="Format" />
       <div className="mt-4">
-        <Stepper step={4} label="Review & publish" />
+        <Stepper step={5} total={5} label="Review & publish" />
       </div>
 
       <h1 className="display mt-5 text-[26px]">{tournament.name}</h1>

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { regenerateSchedule } from "@/lib/schedule-builder";
+import { regenerateSchedule, advanceBracket } from "@/lib/schedule-builder";
 import { notifyFollowers } from "@/lib/notify";
 import { computeStandings, DEFAULT_RULES } from "@/lib/engine/standings";
 import { bracketSeedOrder } from "@/lib/engine/schedule";
@@ -70,10 +70,13 @@ export async function addTeams(formData: FormData) {
   const divisionId = String(formData.get("division_id") ?? "") || null;
   const raw = String(formData.get("teams") ?? "");
 
+  // Accept one-per-line OR pasted CSV — take the first column as the team name,
+  // strip quotes, and drop a leading header row if present.
   const names = raw
-    .split("\n")
-    .map((n) => n.trim())
-    .filter(Boolean);
+    .split(/\r?\n/)
+    .map((line) => (line.split(",")[0] ?? "").trim().replace(/^["']|["']$/g, ""))
+    .filter(Boolean)
+    .filter((n, i) => !(i === 0 && /^(team|team name|name)$/i.test(n)));
   if (names.length === 0) return;
 
   const { count } = await supabase
@@ -237,6 +240,7 @@ export async function postScore(formData: FormData) {
   const home = Number(formData.get("home_score") ?? 0);
   const away = Number(formData.get("away_score") ?? 0);
   const isCorrection = formData.get("correction") === "1";
+  const returnTo = String(formData.get("return_to") ?? `/director/${tournamentId}/scores`);
 
   const { data: game } = await supabase
     .from("games")
@@ -248,6 +252,9 @@ export async function postScore(formData: FormData) {
     .from("games")
     .update({ home_score: home, away_score: away, status: "final" })
     .eq("id", gameId);
+
+  // Winners flow into later bracket rounds.
+  await advanceBracket(supabase, tournamentId);
 
   // First time the tournament goes "live", flip its status.
   await supabase
@@ -268,7 +275,8 @@ export async function postScore(formData: FormData) {
 
   revalidatePath(`/director/${tournamentId}/scores`);
   revalidatePath(`/director/${tournamentId}/standings`);
-  redirect(`/director/${tournamentId}/scores?posted=${gameId}`);
+  revalidatePath(`/score/${tournamentId}`);
+  redirect(`${returnTo}?posted=${gameId}`);
 }
 
 /* ----------------- Seed bracket from pool standings ---------------- */
@@ -330,6 +338,9 @@ export async function seedBracket(formData: FormData) {
       })
       .eq("id", g.id);
   }
+
+  // Cascade any already-decided rounds forward.
+  await advanceBracket(supabase, tournamentId);
 
   void order;
   revalidatePath(`/director/${tournamentId}/standings`);

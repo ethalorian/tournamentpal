@@ -2,6 +2,9 @@ import Link from "next/link";
 import { loadPublicTournament } from "@/lib/public";
 import { FollowerShell } from "@/components/FollowerShell";
 import { FollowButton } from "@/components/FollowButton";
+import { AlertsPhone } from "@/components/AlertsPhone";
+import { PushToggle } from "@/components/PushToggle";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { Eyebrow, Badge, EmptyState } from "@/components/ui";
 import { dayLabel, gameTime } from "@/lib/format";
 
@@ -11,14 +14,19 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const { tournament, supabase, user } = await loadPublicTournament(id);
 
-  const [{ data: teams }, { data: games }, { data: divisions }, follows] = await Promise.all([
-    supabase.from("teams").select("id,name,division_id").eq("tournament_id", id).order("name"),
-    supabase.from("games").select("*").eq("tournament_id", id).order("scheduled_at"),
-    supabase.from("divisions").select("*").eq("tournament_id", id).order("sort"),
-    user
-      ? supabase.from("follows").select("team_id").eq("follower_id", user.id).eq("tournament_id", id)
-      : Promise.resolve({ data: [] as { team_id: string }[] }),
-  ]);
+  const [{ data: teams }, { data: games }, { data: divisions }, follows, { data: sponsors }, profileRes] =
+    await Promise.all([
+      supabase.from("teams").select("id,name,division_id").eq("tournament_id", id).order("name"),
+      supabase.from("games").select("*").eq("tournament_id", id).order("scheduled_at"),
+      supabase.from("divisions").select("*").eq("tournament_id", id).order("sort"),
+      user
+        ? supabase.from("follows").select("team_id").eq("follower_id", user.id).eq("tournament_id", id)
+        : Promise.resolve({ data: [] as { team_id: string }[] }),
+      supabase.from("sponsors").select("id,name,url,tier").eq("tournament_id", id).order("sort"),
+      user
+        ? supabase.from("profiles").select("phone").eq("id", user.id).maybeSingle()
+        : Promise.resolve({ data: null as { phone: string | null } | null }),
+    ]);
 
   const teamList = teams ?? [];
   const teamName = new Map(teamList.map((t) => [t.id, t.name]));
@@ -31,11 +39,18 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
   const results = allGames.filter((g) => g.status === "final").slice(-4).reverse();
 
   return (
-    <FollowerShell id={id} tournamentName={tournament.name} dayLabel={dayLabel(tournament)}>
+    <FollowerShell
+      id={id}
+      tournamentName={tournament.name}
+      dayLabel={dayLabel(tournament)}
+      hold={{ status: tournament.hold_status, note: tournament.hold_note, until: tournament.hold_until }}
+    >
       <div className="-mt-2 mb-4 flex items-center gap-2 text-[12px] font-semibold text-muted">
         <Badge tone={tournament.status === "live" ? "accent" : "muted"}>{tournament.status}</Badge>
         <span>{tournament.location ?? ""}</span>
       </div>
+
+      <InstallPrompt />
 
       {/* Next up */}
       <Eyebrow className="mb-3">Next up</Eyebrow>
@@ -118,6 +133,39 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
         ))}
         {teamList.length === 0 && <EmptyState title="Teams coming soon" />}
       </div>
+
+      {user && (
+        <>
+          <AlertsPhone tournamentId={id} phone={profileRes?.data?.phone ?? null} followingCount={followed.size} />
+          <PushToggle />
+        </>
+      )}
+
+      {sponsors && sponsors.length > 0 && (
+        <div className="mt-8">
+          <Eyebrow className="mb-2 text-center">Proudly sponsored by</Eyebrow>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {sponsors.map((s) => {
+              const inner = (
+                <span
+                  className={`display rounded-xl px-3 py-2 text-[13px] ${
+                    s.tier === "headline" ? "bg-accent text-ink" : "border border-faint text-ink"
+                  }`}
+                >
+                  {s.name}
+                </span>
+              );
+              return s.url ? (
+                <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer">
+                  {inner}
+                </a>
+              ) : (
+                <span key={s.id}>{inner}</span>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {divisions && divisions.length > 0 && (
         <p className="mt-6 text-center text-[11px] text-muted">

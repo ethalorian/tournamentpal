@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type Tab = { seg: string; label: string; icon: "live" | "cal" | "table" | "pin" };
+type Tab = { seg: string; label: string; icon: "live" | "cal" | "table" | "pin" | "food" };
 
 const ICONS: Record<Tab["icon"], (a: boolean) => React.ReactNode> = {
   live: (a) => (
@@ -30,6 +30,12 @@ const ICONS: Record<Tab["icon"], (a: boolean) => React.ReactNode> = {
       <circle cx="10" cy="8" r="2" stroke={a ? "#facc15" : "#7a7a7a"} strokeWidth="2" />
     </svg>
   ),
+  food: (a) => (
+    <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
+      <path d="M5 3 V9 M7 3 V9 M6 9 V17 M6 3 C6 3 8 3.5 8 6 C8 8 6 9 6 9" stroke={a ? "#facc15" : "#7a7a7a"} strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M13 3 C11.5 4 11 6 11.5 8 C11.8 9 12.5 9 13 9 V17" stroke={a ? "#facc15" : "#7a7a7a"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 };
 
 export function FollowerNav({ id }: { id: string }) {
@@ -39,6 +45,7 @@ export function FollowerNav({ id }: { id: string }) {
     { seg: "", label: "Live", icon: "live" },
     { seg: "/schedule", label: "Schedule", icon: "cal" },
     { seg: "/standings", label: "Standings", icon: "table" },
+    { seg: "/concessions", label: "Food", icon: "food" },
     { seg: "/directions", label: "Directions", icon: "pin" },
   ];
   return (

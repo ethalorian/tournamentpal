@@ -138,6 +138,7 @@ export function buildSingleElim(
       key: `bracket-r1-g${i + 1}`,
       stage: "bracket",
       round: 1,
+      pos: i,
       bracketSlot: `${roundName(size)} ${i + 1}`,
       homeSeed,
       awaySeed,
@@ -156,6 +157,7 @@ export function buildSingleElim(
         key: `bracket-r${round}-g${i + 1}`,
         stage: "bracket",
         round,
+        pos: i,
         bracketSlot:
           gamesThisRound === 1
             ? roundName(teamsInRound)

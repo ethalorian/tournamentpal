@@ -8,6 +8,7 @@ import {
 } from "@/lib/engine/schedule";
 import { assignFieldsAndTimes } from "@/lib/engine/schedule";
 import { getPreset } from "@/lib/engine/presets";
+import { computeBracketAdvancement } from "@/lib/engine/bracket";
 import type { EngineField, EngineTeam, PlannedGame } from "@/lib/engine/types";
 
 type SB = SupabaseClient<Database>;
@@ -159,6 +160,7 @@ export async function regenerateSchedule(
         field_id: g.fieldId,
         stage: g.stage,
         round: g.round,
+        bracket_pos: g.pos ?? null,
         bracket_slot: g.bracketSlot ?? null,
         home_team_id: g.homeTeamId,
         away_team_id: g.awayTeamId,
@@ -182,6 +184,38 @@ export async function regenerateSchedule(
     bracketGames: bracketGameCount,
     conflicts: conflictCount,
   };
+}
+
+/**
+ * Recompute bracket team slots from posted results and persist any changes.
+ * Call after a bracket score is posted (or after seeding round 1).
+ */
+export async function advanceBracket(supabase: SB, tournamentId: string): Promise<number> {
+  const { data: bracket } = await supabase
+    .from("games")
+    .select("id,round,bracket_pos,home_team_id,away_team_id,home_score,away_score,status")
+    .eq("tournament_id", tournamentId)
+    .eq("stage", "bracket");
+
+  const games = (bracket ?? []).map((g) => ({
+    id: g.id,
+    round: g.round,
+    pos: g.bracket_pos ?? 0,
+    home_team_id: g.home_team_id,
+    away_team_id: g.away_team_id,
+    home_score: g.home_score,
+    away_score: g.away_score,
+    status: g.status,
+  }));
+
+  const updates = computeBracketAdvancement(games);
+  for (const u of updates) {
+    await supabase
+      .from("games")
+      .update({ home_team_id: u.home_team_id, away_team_id: u.away_team_id })
+      .eq("id", u.id);
+  }
+  return updates.length;
 }
 
 function startOfPlay(date: string | null): string {

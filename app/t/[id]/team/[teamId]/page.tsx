@@ -50,7 +50,12 @@ export default async function TeamPage({
     : tables[0];
 
   return (
-    <FollowerShell id={id} tournamentName={tournament.name} dayLabel={dayLabel(tournament)}>
+    <FollowerShell
+      id={id}
+      tournamentName={tournament.name}
+      dayLabel={dayLabel(tournament)}
+      hold={{ status: tournament.hold_status, note: tournament.hold_note, until: tournament.hold_until }}
+    >
       <div className="-mt-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="display flex h-12 w-12 items-center justify-center rounded-full bg-ink text-[18px] text-white">

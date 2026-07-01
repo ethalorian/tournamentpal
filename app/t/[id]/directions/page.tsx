@@ -24,7 +24,12 @@ export default async function DirectionsPage({ params }: { params: Promise<{ id:
   const orphanFields = fieldList.filter((f) => !f.site_id);
 
   return (
-    <FollowerShell id={id} tournamentName={tournament.name} dayLabel={dayLabel(tournament)}>
+    <FollowerShell
+      id={id}
+      tournamentName={tournament.name}
+      dayLabel={dayLabel(tournament)}
+      hold={{ status: tournament.hold_status, note: tournament.hold_note, until: tournament.hold_until }}
+    >
       <h2 className="display -mt-2 mb-4 text-[18px] text-muted">Directions &amp; parking</h2>
 
       {siteList.length === 0 && orphanFields.length === 0 && (
