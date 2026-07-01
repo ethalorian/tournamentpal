@@ -90,7 +90,6 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: process.env.SCAN_TEAMS_MODEL || DEFAULT_MODEL,
         max_tokens: 1024,
-        temperature: 0,
         system: SYSTEM_PROMPT,
         messages: [
           {
