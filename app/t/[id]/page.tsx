@@ -45,7 +45,6 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
   const upcoming = allGames
     .filter((g) => g.status === "scheduled" && g.home_team_id && g.away_team_id)
     .slice(0, 3);
-  const results = allGames.filter((g) => g.status === "final").slice(-4).reverse();
 
   return (
     <FollowerShell
@@ -126,31 +125,6 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
             </div>
           ))}
         </div>
-      )}
-
-      {/* Results */}
-      {results.length > 0 && (
-        <>
-          <Eyebrow className="mb-3 mt-7">Latest results</Eyebrow>
-          <div className="flex flex-col gap-2">
-            {results.map((g) => {
-              const homeWon = (g.home_score ?? 0) > (g.away_score ?? 0);
-              return (
-                <div key={g.id} className="flex items-center justify-between rounded-xl border border-faint px-3.5 py-2.5">
-                  <div className="text-[13px]">
-                    <div className={homeWon ? "font-extrabold" : "font-medium text-muted"}>
-                      {teamName.get(g.home_team_id ?? "")} {g.home_score}
-                    </div>
-                    <div className={!homeWon ? "font-extrabold" : "font-medium text-muted"}>
-                      {teamName.get(g.away_team_id ?? "")} {g.away_score}
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted">Final</span>
-                </div>
-              );
-            })}
-          </div>
-        </>
       )}
 
       {/* Tournament rules */}

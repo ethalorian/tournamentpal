@@ -3,13 +3,33 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type Tab = { seg: string; label: string; icon: "live" | "cal" | "table" | "pin" | "food" };
+type Tab = { seg: string; label: string; icon: "home" | "cal" | "table" | "pin" | "food" };
 
 const ICONS: Record<Tab["icon"], (a: boolean) => React.ReactNode> = {
-  live: (a) => (
-    <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
-      <circle cx="10" cy="10" r="3" fill={a ? "#facc15" : "#7a7a7a"} />
-      <circle cx="10" cy="10" r="7" stroke={a ? "#facc15" : "#7a7a7a"} strokeWidth="2" />
+  home: (a) => (
+    // House flipped vertically (roof pointing down).
+    <svg width="22" height="22" viewBox="0 0 20 20" fill="none" style={{ transform: "scaleY(-1)" }}>
+      <path
+        d="M3 9 L10 3 L17 9"
+        stroke={a ? "#facc15" : "#7a7a7a"}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 9 V16 H15 V9"
+        stroke={a ? "#facc15" : "#7a7a7a"}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.5 16 V12 H11.5 V16"
+        stroke={a ? "#facc15" : "#7a7a7a"}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   ),
   cal: (a) => (
@@ -42,7 +62,7 @@ export function FollowerNav({ id }: { id: string }) {
   const pathname = usePathname();
   const base = `/t/${id}`;
   const tabs: Tab[] = [
-    { seg: "", label: "Live", icon: "live" },
+    { seg: "", label: "Home", icon: "home" },
     { seg: "/schedule", label: "Schedule", icon: "cal" },
     { seg: "/standings", label: "Standings", icon: "table" },
     { seg: "/concessions", label: "Food", icon: "food" },
