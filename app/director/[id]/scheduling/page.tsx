@@ -1,0 +1,219 @@
+import { loadOwnedTournament } from "@/lib/tournament";
+import { DirectorShell, BackLink } from "@/components/DirectorShell";
+import { TournamentNav } from "@/components/TournamentNav";
+import { Eyebrow, Field, inputClass, Button, Badge, Card } from "@/components/ui";
+import { TimezoneSelect } from "@/components/TimezoneSelect";
+import {
+  saveScheduleConfig,
+  saveDivisionWindow,
+  saveTeamConstraints,
+  regenerateWithConstraints,
+} from "@/app/director/scheduling";
+
+export const dynamic = "force-dynamic";
+
+const DEFAULTS = { dayStart: "08:00", dayEnd: "20:00", gameLengthMins: 90, bufferMins: 15 };
+
+export default async function SchedulingPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ rebuilt?: string }>;
+}) {
+  const { id } = await params;
+  const { rebuilt } = await searchParams;
+  const { tournament, supabase } = await loadOwnedTournament(id);
+
+  const [{ data: divisions }, { data: teams }, { data: fields }, { data: games }] = await Promise.all([
+    supabase.from("divisions").select("*").eq("tournament_id", id).order("sort"),
+    supabase.from("teams").select("*").eq("tournament_id", id).order("seed"),
+    supabase.from("fields").select("*").eq("tournament_id", id).order("name"),
+    supabase.from("games").select("id,home_team_id,away_team_id,scheduled_at,field_id,stage").eq("tournament_id", id),
+  ]);
+  const divList = divisions ?? [];
+  const teamList = teams ?? [];
+  const fieldList = fields ?? [];
+  const teamName = new Map(teamList.map((t) => [t.id, t.name]));
+
+  const cfg = { ...DEFAULTS, ...((tournament.schedule_config ?? {}) as Partial<typeof DEFAULTS>) };
+
+  // Games the constraints left unplaced (only meaningful once a schedule exists).
+  const unplaced = (games ?? []).filter((g) => !g.scheduled_at || !g.field_id);
+  const hasSchedule = (games ?? []).length > 0;
+
+  return (
+    <DirectorShell>
+      <BackLink href={`/director/${id}`} />
+      <h1 className="display mt-3 text-[26px]">Scheduling</h1>
+      <TournamentNav id={id} />
+
+      {rebuilt && (
+        <p className="mt-4 rounded-xl bg-success/10 px-4 py-3 text-[13px] font-semibold text-success">
+          Schedule rebuilt with your constraints.
+        </p>
+      )}
+
+      {/* Conflicts banner */}
+      {hasSchedule && (
+        <div
+          className={`mt-4 rounded-xl px-4 py-3 text-[13px] font-semibold ${
+            unplaced.length ? "bg-danger/10 text-danger" : "bg-success/10 text-success"
+          }`}
+        >
+          {unplaced.length === 0
+            ? "Every game fits your constraints."
+            : `${unplaced.length} game${unplaced.length > 1 ? "s" : ""} couldn't be placed without breaking a rule.`}
+          {unplaced.length > 0 && (
+            <ul className="mt-2 list-disc pl-5 font-normal">
+              {unplaced.slice(0, 8).map((g) => (
+                <li key={g.id}>
+                  {g.home_team_id ? teamName.get(g.home_team_id) ?? "TBD" : "TBD"} vs{" "}
+                  {g.away_team_id ? teamName.get(g.away_team_id) ?? "TBD" : "TBD"} ({g.stage})
+                </li>
+              ))}
+              {unplaced.length > 8 && <li>…and {unplaced.length - 8} more</li>}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* 1 · Time window */}
+      <Eyebrow className="mt-7 mb-3">Playing window</Eyebrow>
+      <Card>
+        <div className="display text-[15px]">First game &amp; daily window</div>
+        <p className="mt-1 text-[12px] text-muted">
+          The first game each day starts at this time; nothing is scheduled to run past the day end.
+        </p>
+        <form action={saveScheduleConfig} className="mt-4 flex flex-col gap-4">
+          <input type="hidden" name="tournament_id" value={id} />
+          <Field label="Timezone" hint="All game times are shown in this zone for everyone.">
+            <TimezoneSelect value={tournament.timezone} />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="First game start">
+              <input name="day_start" type="time" defaultValue={cfg.dayStart} className={inputClass} />
+            </Field>
+            <Field label="Day end (last game out by)">
+              <input name="day_end" type="time" defaultValue={cfg.dayEnd} className={inputClass} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Game length (min)">
+              <input name="game_length" type="number" inputMode="numeric" defaultValue={cfg.gameLengthMins} className={inputClass} />
+            </Field>
+            <Field label="Buffer between games (min)">
+              <input name="buffer" type="number" inputMode="numeric" defaultValue={cfg.bufferMins} className={inputClass} />
+            </Field>
+          </div>
+          <Button type="submit" variant="ink" className="w-full">Save playing window</Button>
+        </form>
+      </Card>
+
+      {/* 2 · Division windows */}
+      {divList.length > 0 && (
+        <>
+          <Eyebrow className="mt-7 mb-3">Division time windows</Eyebrow>
+          <p className="-mt-1 mb-3 text-[12px] text-muted">
+            Confine an age group to part of the day (e.g. 10U mornings). Leave blank for any time.
+          </p>
+          <div className="flex flex-col gap-2">
+            {divList.map((d) => (
+              <Card key={d.id}>
+                <form action={saveDivisionWindow} className="flex flex-wrap items-end gap-3">
+                  <input type="hidden" name="tournament_id" value={id} />
+                  <input type="hidden" name="division_id" value={d.id} />
+                  <div className="min-w-[80px] flex-1">
+                    <div className="text-[14px] font-extrabold">{d.name}</div>
+                  </div>
+                  <Field label="Not before">
+                    <input name="window_start" type="time" defaultValue={d.window_start ?? ""} className={inputClass} />
+                  </Field>
+                  <Field label="Done by">
+                    <input name="window_end" type="time" defaultValue={d.window_end ?? ""} className={inputClass} />
+                  </Field>
+                  <Button type="submit" variant="ink" className="mb-[1px]">Save</Button>
+                </form>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* 3 · Team restrictions */}
+      <Eyebrow className="mt-7 mb-3">Team restrictions</Eyebrow>
+      <p className="-mt-1 mb-3 text-[12px] text-muted">
+        Pin a team to specific fields, or set when it can play. Unchecked fields = any field; blank times = any time.
+      </p>
+      {teamList.length === 0 ? (
+        <p className="text-[13px] text-muted">Add teams first.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {teamList.map((t) => (
+            <Card key={t.id}>
+              <form action={saveTeamConstraints} className="flex flex-col gap-3">
+                <input type="hidden" name="tournament_id" value={id} />
+                <input type="hidden" name="team_id" value={t.id} />
+                <div className="flex items-center gap-2">
+                  <span className="display flex h-6 w-6 items-center justify-center rounded-md bg-haze text-[11px]">{t.seed}</span>
+                  <span className="text-[14px] font-extrabold">{t.name}</span>
+                </div>
+
+                {fieldList.length > 0 && (
+                  <div>
+                    <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted">Only plays on</div>
+                    <div className="flex flex-wrap gap-2">
+                      {fieldList.map((f) => (
+                        <label key={f.id} className="cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name="allowed_field_ids"
+                            value={f.id}
+                            defaultChecked={(t.allowed_field_ids ?? []).includes(f.id)}
+                            className="peer sr-only"
+                          />
+                          <span className="block rounded-full border-2 border-faint px-3 py-1.5 text-[12px] font-bold peer-checked:border-ink peer-checked:bg-ink peer-checked:text-white">
+                            {f.name}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-end gap-3">
+                  <Field label="Can't play before">
+                    <input name="avail_start" type="time" defaultValue={t.avail_start ?? ""} className={inputClass} />
+                  </Field>
+                  <Field label="Can't play after">
+                    <input name="avail_end" type="time" defaultValue={t.avail_end ?? ""} className={inputClass} />
+                  </Field>
+                  <Button type="submit" variant="ink" className="mb-[1px]">Save</Button>
+                </div>
+              </form>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* 4 · Field → division note */}
+      <div className="mt-6 flex items-center justify-between rounded-xl border border-faint px-4 py-3">
+        <div className="text-[12px] text-muted">
+          Field-by-division limits (which fields each age group can use) are set on each field.
+        </div>
+        <Badge tone="muted">Fields tab</Badge>
+      </div>
+
+      {/* Regenerate */}
+      <form action={regenerateWithConstraints} className="mt-7">
+        <input type="hidden" name="tournament_id" value={id} />
+        <Button type="submit" className="w-full">
+          {hasSchedule ? "Rebuild schedule with these rules" : "Generate schedule with these rules"}
+        </Button>
+      </form>
+      <p className="mt-2 text-center text-[11px] text-muted">
+        Constraints apply when the schedule is (re)built. Rebuilding replaces the current games.
+      </p>
+    </DirectorShell>
+  );
+}

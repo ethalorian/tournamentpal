@@ -29,6 +29,7 @@ export async function createTournamentDraft(formData: FormData) {
   const location = String(formData.get("location") ?? "").trim();
   const start_date = String(formData.get("start_date") ?? "") || null;
   const end_date = String(formData.get("end_date") ?? "") || null;
+  const timezone = String(formData.get("timezone") ?? "").trim() || "America/New_York";
   const divisionsRaw = String(formData.get("divisions") ?? "").trim();
 
   if (!name) throw new Error("Your event needs a name.");
@@ -55,6 +56,7 @@ export async function createTournamentDraft(formData: FormData) {
       lng: hasCoords ? clng : geo?.lng ?? null,
       start_date,
       end_date,
+      timezone,
       status: "draft",
       rules: DEFAULT_RULES as never,
     })

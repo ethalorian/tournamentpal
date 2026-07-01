@@ -4,6 +4,7 @@ import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { Stepper } from "@/components/Stepper";
 import { Button, Eyebrow, Stat, Card } from "@/components/ui";
 import { getPreset } from "@/lib/engine/presets";
+import { gameTime } from "@/lib/format";
 import {
   generateScheduleAction,
   publishTournament,
@@ -86,12 +87,7 @@ export default async function ReviewStep({ params }: { params: Promise<{ id: str
                   {nm(g.home_team_id)} <span className="text-muted">vs</span> {nm(g.away_team_id)}
                 </div>
                 <div className="text-[11px] font-semibold text-muted">
-                  {g.scheduled_at
-                    ? new Date(g.scheduled_at).toLocaleTimeString("en-US", {
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })
-                    : "—"}
+                  {g.scheduled_at ? gameTime(g.scheduled_at, tournament.timezone) : "—"}
                 </div>
               </div>
             ))}

@@ -18,6 +18,7 @@ export default async function PublicSchedule({
   const { view: viewParam, team: teamParam } = await searchParams;
   const { tournament, supabase } = await loadPublicTournament(id);
   const tid = tournament.id;
+  const tz = tournament.timezone;
 
   const [{ data: teams }, { data: games }, { data: fields }] = await Promise.all([
     supabase.from("teams").select("id,name").eq("tournament_id", tid).order("name"),
@@ -41,7 +42,7 @@ export default async function PublicSchedule({
   const groups = new Map<string, typeof allGames>();
   for (const g of listGames) {
     const key = g.scheduled_at
-      ? new Date(g.scheduled_at).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
+      ? new Date(g.scheduled_at).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", timeZone: tz })
       : "Unscheduled";
     const arr = groups.get(key) ?? [];
     arr.push(g);
@@ -82,7 +83,7 @@ export default async function PublicSchedule({
                         {isFinal ? (
                           <Badge tone="muted">Final</Badge>
                         ) : (
-                          <span className="text-[11px] font-semibold text-muted">{gameTime(g.scheduled_at)}</span>
+                          <span className="text-[11px] font-semibold text-muted">{gameTime(g.scheduled_at, tz)}</span>
                         )}
                       </div>
                       <div className="mt-1.5 flex items-center justify-between text-[14px]">

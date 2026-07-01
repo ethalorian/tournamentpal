@@ -6,6 +6,7 @@ import { Stepper } from "@/components/Stepper";
 import { Eyebrow, Field, inputClass, Button, EmptyState, Badge, Card } from "@/components/ui";
 import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { addField } from "@/app/director/actions";
+import { addFacilityToTournament } from "@/app/director/facilities";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +21,18 @@ export default async function FieldsPage({
   const { setup } = await searchParams;
   const { supabase } = await loadOwnedTournament(id);
 
-  const [{ data: fields }, { data: sites }, { data: divisions }] = await Promise.all([
-    supabase.from("fields").select("*").eq("tournament_id", id).order("name"),
-    supabase.from("sites").select("*").eq("tournament_id", id),
-    supabase.from("divisions").select("*").eq("tournament_id", id).order("sort"),
-  ]);
+  const [{ data: fields }, { data: sites }, { data: divisions }, { data: facilities }, { data: facilityFields }] =
+    await Promise.all([
+      supabase.from("fields").select("*").eq("tournament_id", id).order("name"),
+      supabase.from("sites").select("*").eq("tournament_id", id),
+      supabase.from("divisions").select("*").eq("tournament_id", id).order("sort"),
+      supabase.from("facility_sites").select("*").order("name"),
+      supabase.from("facility_fields").select("facility_site_id"),
+    ]);
+  const fieldCountBySite = new Map<string, number>();
+  for (const f of facilityFields ?? [])
+    fieldCountBySite.set(f.facility_site_id, (fieldCountBySite.get(f.facility_site_id) ?? 0) + 1);
+  const facilityList = facilities ?? [];
   const siteName = new Map((sites ?? []).map((s) => [s.id, s.name]));
   const fieldList = fields ?? [];
   const divList = divisions ?? [];
@@ -36,6 +44,39 @@ export default async function FieldsPage({
 
   const body = (
     <>
+      {facilityList.length > 0 && (
+        <Card className="mt-6">
+          <div className="display text-[15px]">Pull from your facilities</div>
+          <p className="mt-1 text-[12px] text-muted">
+            Tap a saved facility to drop its site and diamonds into this event.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {facilityList.map((s) => (
+              <form key={s.id} action={addFacilityToTournament}>
+                <input type="hidden" name="tournament_id" value={id} />
+                <input type="hidden" name="facility_site_id" value={s.id} />
+                {isWizard && <input type="hidden" name="setup" value="1" />}
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 rounded-full border-2 border-ink px-3 py-1.5 text-[12px] font-bold active:scale-95"
+                >
+                  <span className="text-[15px] leading-none">+</span>
+                  {s.name}
+                  {fieldCountBySite.get(s.id) ? (
+                    <span className="text-muted">
+                      {fieldCountBySite.get(s.id)} {fieldCountBySite.get(s.id) === 1 ? "diamond" : "diamonds"}
+                    </span>
+                  ) : null}
+                </button>
+              </form>
+            ))}
+          </div>
+          <Link href="/director/facilities" className="mt-3 inline-block text-[12px] font-bold text-ink underline">
+            Manage facilities →
+          </Link>
+        </Card>
+      )}
+
       <Eyebrow className="mt-6 mb-3">
         {fieldList.length} {fieldList.length === 1 ? "field" : "fields"}
       </Eyebrow>

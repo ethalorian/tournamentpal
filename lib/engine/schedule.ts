@@ -1,11 +1,25 @@
 import type {
+  ConstrainedGame,
+  DivisionWindow,
   EngineField,
   EngineTeam,
   FormatPreset,
   PlannedGame,
   ScheduledGame,
+  SlotConfig,
+  TeamConstraint,
 } from "./types";
 import { powerOfTwoCeil } from "./presets";
+import { wallTimeToUtcMs } from "./time";
+
+/** Parse "HH:MM" into minutes from midnight; null/blank -> null. */
+export function hhmmToMinutes(v: string | null | undefined): number | null {
+  if (!v) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(v.trim());
+  if (!m) return null;
+  const min = Number(m[1]) * 60 + Number(m[2]);
+  return Number.isFinite(min) ? min : null;
+}
 
 /** Order teams by seed (asc); teams without a seed keep input order, last. */
 export function orderBySeed(teams: EngineTeam[]): EngineTeam[] {
@@ -310,4 +324,125 @@ function setNew(m: Map<string, Set<number>>, k: string): Set<number> {
   const s = new Set<number>();
   m.set(k, s);
   return s;
+}
+
+/**
+ * Constraint-aware scheduler. Places every game onto a concrete (field, time)
+ * across all divisions at once — so a field is never double-booked between
+ * divisions — while enforcing, as HARD rules:
+ *   • the daily slot window (start/end/game length/buffer),
+ *   • field → division eligibility,
+ *   • team → allowed fields,
+ *   • division time windows,
+ *   • team availability windows,
+ *   • no team playing two games at once.
+ * Games that can't be placed without breaking a rule are returned unplaced with
+ * a conflict reason rather than forced into a bad slot.
+ */
+export function assignSchedule<G extends ConstrainedGame>(
+  games: G[],
+  fields: EngineField[],
+  opts: {
+    slot: SlotConfig;
+    teamConstraints: Map<string, TeamConstraint>;
+    divisionWindows: Map<string, DivisionWindow>; // keyed by division name
+  }
+): (G & { fieldId: string | null; scheduledAt: string | null; conflict: string | null })[] {
+  const { gameLengthMins: gLen, bufferMins, dayStartMin, dayEndMin } = opts.slot;
+  const step = Math.max(1, gLen + bufferMins);
+
+  // Concrete slot grid across days, ordered chronologically. Wall-clock times
+  // are interpreted in the tournament timezone, then stored as UTC instants.
+  const tz = opts.slot.timeZone || "UTC";
+  const slots: { ms: number; timeMin: number }[] = [];
+  for (const day of opts.slot.days) {
+    for (let t = dayStartMin; t + gLen <= dayEndMin; t += step) {
+      slots.push({ ms: wallTimeToUtcMs(day, t, tz), timeMin: t });
+    }
+  }
+  slots.sort((a, b) => a.ms - b.ms);
+
+  const fieldBusy = new Map<string, Set<number>>();
+  const teamBusy = new Map<string, Set<number>>();
+  const busy = (m: Map<string, Set<number>>, k: string) =>
+    m.get(k) ?? setNew(m, k);
+
+  // Pool play first (earliest rounds first), then bracket.
+  const sorted = [...games].sort((a, b) => {
+    if (a.stage !== b.stage) return a.stage === "pool" ? -1 : 1;
+    return a.round - b.round;
+  });
+
+  const out: (G & { fieldId: string | null; scheduledAt: string | null; conflict: string | null })[] = [];
+
+  for (const g of sorted) {
+    const divWin = g.divisionName ? opts.divisionWindows.get(g.divisionName) : undefined;
+    const homeC = g.homeTeamId ? opts.teamConstraints.get(g.homeTeamId) : undefined;
+    const awayC = g.awayTeamId ? opts.teamConstraints.get(g.awayTeamId) : undefined;
+
+    // Fields this game is allowed to use at all (division + team allowlists).
+    const eligibleFields = fields.filter((f) => {
+      if (f.allowedDivisions.length > 0 && g.divisionName && !f.allowedDivisions.includes(g.divisionName))
+        return false;
+      if (homeC?.allowedFieldIds.length && !homeC.allowedFieldIds.includes(f.id)) return false;
+      if (awayC?.allowedFieldIds.length && !awayC.allowedFieldIds.includes(f.id)) return false;
+      return true;
+    });
+
+    let placed = false;
+    if (eligibleFields.length > 0) {
+      for (let si = 0; si < slots.length; si++) {
+        const timeMin = slots[si].timeMin;
+        const endMin = timeMin + gLen;
+
+        // Division & team time-of-day windows.
+        if (divWin) {
+          if (divWin.startMin != null && timeMin < divWin.startMin) continue;
+          if (divWin.endMin != null && endMin > divWin.endMin) continue;
+        }
+        if (homeC) {
+          if (homeC.availStartMin != null && timeMin < homeC.availStartMin) continue;
+          if (homeC.availEndMin != null && endMin > homeC.availEndMin) continue;
+        }
+        if (awayC) {
+          if (awayC.availStartMin != null && timeMin < awayC.availStartMin) continue;
+          if (awayC.availEndMin != null && endMin > awayC.availEndMin) continue;
+        }
+
+        // A team can't already be playing in this slot.
+        if (g.homeTeamId && busy(teamBusy, g.homeTeamId).has(si)) continue;
+        if (g.awayTeamId && busy(teamBusy, g.awayTeamId).has(si)) continue;
+
+        // First eligible field open at this slot.
+        const field = eligibleFields.find((f) => !busy(fieldBusy, f.id).has(si));
+        if (!field) continue;
+
+        busy(fieldBusy, field.id).add(si);
+        if (g.homeTeamId) busy(teamBusy, g.homeTeamId).add(si);
+        if (g.awayTeamId) busy(teamBusy, g.awayTeamId).add(si);
+        out.push({
+          ...g,
+          fieldId: field.id,
+          scheduledAt: new Date(slots[si].ms).toISOString(),
+          conflict: null,
+        });
+        placed = true;
+        break;
+      }
+    }
+
+    if (!placed) {
+      out.push({
+        ...g,
+        fieldId: null,
+        scheduledAt: null,
+        conflict:
+          eligibleFields.length === 0
+            ? "No field satisfies this game's restrictions"
+            : "No open slot fits every restriction",
+      });
+    }
+  }
+
+  return out;
 }

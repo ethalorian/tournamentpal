@@ -7,12 +7,144 @@ import {
   buildSingleElim,
   planTournament,
   assignFieldsAndTimes,
+  assignSchedule,
+  hhmmToMinutes,
 } from "./schedule";
 import { computeStandings, DEFAULT_RULES } from "./standings";
 import { computeBracketAdvancement } from "./bracket";
 import { projectSeeding } from "./seeding";
 import { suggestPreset, getPreset } from "./presets";
-import type { EngineTeam, GameResult } from "./types";
+import type { ConstrainedGame, EngineField, EngineTeam, GameResult } from "./types";
+
+/* --------------------- constraint-aware scheduler --------------------- */
+
+const TZ = "America/New_York";
+const SLOT = {
+  days: ["2026-07-01"],
+  dayStartMin: 8 * 60, // 08:00
+  dayEndMin: 20 * 60, // 20:00
+  gameLengthMins: 90,
+  bufferMins: 0,
+  timeZone: TZ,
+};
+const F2: EngineField[] = [
+  { id: "f1", name: "F1", allowedDivisions: [] },
+  { id: "f2", name: "F2", allowedDivisions: [] },
+];
+// Wall-clock minutes of `iso` in the tournament timezone.
+const minsOfDay = (iso: string) => {
+  const p = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    hourCycle: "h23",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(new Date(iso));
+  const m: Record<string, number> = {};
+  for (const x of p) if (x.type !== "literal") m[x.type] = Number(x.value);
+  return m.hour * 60 + m.minute;
+};
+
+test("hhmmToMinutes parses and rejects", () => {
+  assert.equal(hhmmToMinutes("08:30"), 510);
+  assert.equal(hhmmToMinutes(""), null);
+  assert.equal(hhmmToMinutes("nope"), null);
+});
+
+test("assignSchedule: no field double-booked across divisions", () => {
+  const games: ConstrainedGame[] = [
+    { key: "a", stage: "pool", round: 1, homeTeamId: "10a", awayTeamId: "10b", divisionId: "d10", divisionName: "10U" },
+    { key: "b", stage: "pool", round: 1, homeTeamId: "12a", awayTeamId: "12b", divisionId: "d12", divisionName: "12U" },
+    { key: "c", stage: "pool", round: 1, homeTeamId: "10c", awayTeamId: "10d", divisionId: "d10", divisionName: "10U" },
+  ];
+  const out = assignSchedule(games, F2, {
+    slot: SLOT,
+    teamConstraints: new Map(),
+    divisionWindows: new Map(),
+  });
+  const byField = new Map<string, string[]>();
+  for (const g of out) {
+    if (!g.fieldId || !g.scheduledAt) continue;
+    const k = `${g.fieldId}@${g.scheduledAt}`;
+    byField.set(k, [...(byField.get(k) ?? []), g.key]);
+  }
+  for (const [, keys] of byField) assert.equal(keys.length, 1, "field/time double-booked");
+});
+
+test("assignSchedule: division window is a hard limit", () => {
+  const games: ConstrainedGame[] = Array.from({ length: 6 }, (_, i) => ({
+    key: `g${i}`,
+    stage: "pool" as const,
+    round: 1,
+    homeTeamId: `h${i}`,
+    awayTeamId: `a${i}`,
+    divisionId: "d",
+    divisionName: "10U",
+  }));
+  const out = assignSchedule(games, F2, {
+    slot: SLOT,
+    teamConstraints: new Map(),
+    divisionWindows: new Map([["10U", { startMin: null, endMin: 12 * 60 }]]), // done by noon
+  });
+  for (const g of out) {
+    if (g.scheduledAt) assert.ok(minsOfDay(g.scheduledAt) + SLOT.gameLengthMins <= 12 * 60);
+  }
+});
+
+test("assignSchedule: team field allowlist honored", () => {
+  const games: ConstrainedGame[] = [
+    { key: "a", stage: "pool", round: 1, homeTeamId: "t1", awayTeamId: "t2", divisionId: null },
+  ];
+  const out = assignSchedule(games, F2, {
+    slot: SLOT,
+    teamConstraints: new Map([["t1", { allowedFieldIds: ["f2"], availStartMin: null, availEndMin: null }]]),
+    divisionWindows: new Map(),
+  });
+  assert.equal(out[0].fieldId, "f2");
+});
+
+test("assignSchedule: team availability is a hard limit", () => {
+  const games: ConstrainedGame[] = [
+    { key: "a", stage: "pool", round: 1, homeTeamId: "t1", awayTeamId: "t2", divisionId: null },
+  ];
+  const out = assignSchedule(games, F2, {
+    slot: SLOT,
+    teamConstraints: new Map([["t1", { allowedFieldIds: [], availStartMin: 13 * 60, availEndMin: null }]]),
+    divisionWindows: new Map(),
+  });
+  assert.ok(out[0].scheduledAt && minsOfDay(out[0].scheduledAt) >= 13 * 60);
+});
+
+test("assignSchedule: impossible restriction flags unplaced", () => {
+  const games: ConstrainedGame[] = [
+    { key: "a", stage: "pool", round: 1, homeTeamId: "t1", awayTeamId: "t2", divisionId: "d", divisionName: "16U" },
+  ];
+  const out = assignSchedule(games, [{ id: "f1", name: "F1", allowedDivisions: ["10U"] }], {
+    slot: SLOT,
+    teamConstraints: new Map(),
+    divisionWindows: new Map(),
+  });
+  assert.equal(out[0].fieldId, null);
+  assert.ok(out[0].conflict);
+});
+
+test("assignSchedule: never schedules past day end", () => {
+  const games: ConstrainedGame[] = Array.from({ length: 40 }, (_, i) => ({
+    key: `g${i}`,
+    stage: "pool" as const,
+    round: 1,
+    homeTeamId: `h${i}`,
+    awayTeamId: `a${i}`,
+    divisionId: null,
+  }));
+  const out = assignSchedule(games, F2, {
+    slot: SLOT,
+    teamConstraints: new Map(),
+    divisionWindows: new Map(),
+  });
+  for (const g of out) {
+    if (g.scheduledAt) assert.ok(minsOfDay(g.scheduledAt) + SLOT.gameLengthMins <= SLOT.dayEndMin);
+  }
+});
 
 function teams(n: number): EngineTeam[] {
   return Array.from({ length: n }, (_, i) => ({

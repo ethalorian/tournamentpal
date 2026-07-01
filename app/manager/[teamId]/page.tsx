@@ -67,7 +67,7 @@ export default async function ManagerHome({ params }: { params: Promise<{ teamId
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted">
               {nextGame.bracket_slot ?? "Pool play"}
             </span>
-            <span className="text-[11px] font-semibold text-muted">{gameDayTime(nextGame.scheduled_at)}</span>
+            <span className="text-[11px] font-semibold text-muted">{gameDayTime(nextGame.scheduled_at, tournament.timezone)}</span>
           </div>
           <div className="display mt-3 text-[22px]">{nm(nextGame.home_team_id)}</div>
           <div className="my-0.5 text-[12px] font-bold text-muted">vs</div>
@@ -94,7 +94,7 @@ export default async function ManagerHome({ params }: { params: Promise<{ teamId
               <div key={g.id} className="flex items-center justify-between rounded-xl border border-faint px-3.5 py-2.5">
                 <div>
                   <div className="text-[14px] font-bold">vs {nm(oppId)}</div>
-                  <div className="text-[11px] font-semibold text-muted">{gameDayTime(g.scheduled_at)}</div>
+                  <div className="text-[11px] font-semibold text-muted">{gameDayTime(g.scheduled_at, tournament.timezone)}</div>
                 </div>
                 {final ? (
                   <div className="flex items-center gap-2">

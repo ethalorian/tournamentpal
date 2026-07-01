@@ -69,7 +69,7 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
                   {g.bracket_slot ?? "Pool play"}
                 </span>
                 <span className={`text-[11px] font-semibold ${i === 0 ? "text-white/70" : "text-muted"}`}>
-                  {gameTime(g.scheduled_at)}
+                  {gameTime(g.scheduled_at, tournament.timezone)}
                 </span>
               </div>
               <div className="mt-2.5 flex items-center justify-between">

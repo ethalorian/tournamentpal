@@ -18,6 +18,72 @@ export type Database = {
         Update: { id?: string; name?: string; default_price_cents?: number; sort?: number }
         Relationships: []
       }
+      facility_sites: {
+        Row: {
+          id: string
+          director_id: string
+          name: string
+          address: string | null
+          lat: number | null
+          lng: number | null
+          parking_info: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          director_id: string
+          name: string
+          address?: string | null
+          lat?: number | null
+          lng?: number | null
+          parking_info?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          director_id?: string
+          name?: string
+          address?: string | null
+          lat?: number | null
+          lng?: number | null
+          parking_info?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      facility_fields: {
+        Row: {
+          id: string
+          director_id: string
+          facility_site_id: string
+          name: string
+          fence_distance: number | null
+          lights: boolean
+          surface: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          director_id: string
+          facility_site_id: string
+          name: string
+          fence_distance?: number | null
+          lights?: boolean
+          surface?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          director_id?: string
+          facility_site_id?: string
+          name?: string
+          fence_distance?: number | null
+          lights?: boolean
+          surface?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       concessions: {
         Row: {
           id: string
@@ -127,9 +193,9 @@ export type Database = {
         Relationships: []
       }
       divisions: {
-        Row: { created_at: string; id: string; name: string; sort: number; tournament_id: string }
-        Insert: { created_at?: string; id?: string; name: string; sort?: number; tournament_id: string }
-        Update: { created_at?: string; id?: string; name?: string; sort?: number; tournament_id?: string }
+        Row: { created_at: string; id: string; name: string; sort: number; tournament_id: string; window_start: string | null; window_end: string | null }
+        Insert: { created_at?: string; id?: string; name: string; sort?: number; tournament_id: string; window_start?: string | null; window_end?: string | null }
+        Update: { created_at?: string; id?: string; name?: string; sort?: number; tournament_id?: string; window_start?: string | null; window_end?: string | null }
         Relationships: []
       }
       fields: {
@@ -366,6 +432,9 @@ export type Database = {
           name: string
           seed: number | null
           tournament_id: string
+          allowed_field_ids: string[]
+          avail_start: string | null
+          avail_end: string | null
         }
         Insert: {
           created_at?: string
@@ -375,6 +444,9 @@ export type Database = {
           name: string
           seed?: number | null
           tournament_id: string
+          allowed_field_ids?: string[]
+          avail_start?: string | null
+          avail_end?: string | null
         }
         Update: {
           created_at?: string
@@ -384,6 +456,9 @@ export type Database = {
           name?: string
           seed?: number | null
           tournament_id?: string
+          allowed_field_ids?: string[]
+          avail_start?: string | null
+          avail_end?: string | null
         }
         Relationships: []
       }
@@ -408,6 +483,8 @@ export type Database = {
           lng: number | null
           registration_open: boolean
           slug: string | null
+          schedule_config: Json | null
+          timezone: string
         }
         Insert: {
           created_at?: string
@@ -429,6 +506,8 @@ export type Database = {
           lng?: number | null
           registration_open?: boolean
           slug?: string | null
+          schedule_config?: Json | null
+          timezone?: string
         }
         Update: {
           created_at?: string
@@ -450,6 +529,7 @@ export type Database = {
           lng?: number | null
           registration_open?: boolean
           slug?: string | null
+          schedule_config?: Json | null
         }
         Relationships: []
       }

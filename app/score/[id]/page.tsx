@@ -56,7 +56,7 @@ export default async function ScoreQueue({
                   {name(g.home_team_id)} <span className="text-muted">vs</span> {name(g.away_team_id)}
                 </div>
                 <div className="mt-0.5 text-[11px] font-semibold text-muted">
-                  {g.bracket_slot ?? "Pool"} · {gameTime(g.scheduled_at)}
+                  {g.bracket_slot ?? "Pool"} · {gameTime(g.scheduled_at, tournament.timezone)}
                 </div>
               </div>
               <Badge tone="blue">Post</Badge>

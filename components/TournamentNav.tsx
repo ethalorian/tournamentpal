@@ -15,6 +15,7 @@ export function TournamentNav({ id }: { id: string }) {
     { href: `/director/${id}/staff`, label: "Staff" },
     { href: `/director/${id}/sponsors`, label: "Sponsors" },
     { href: `/director/${id}/fields`, label: "Fields" },
+    { href: `/director/${id}/scheduling`, label: "Scheduling" },
     { href: `/director/${id}/rules`, label: "Rules" },
   ];
   return (

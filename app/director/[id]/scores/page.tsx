@@ -3,6 +3,7 @@ import { loadOwnedTournament } from "@/lib/tournament";
 import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { TournamentNav } from "@/components/TournamentNav";
 import { Eyebrow, Badge, EmptyState } from "@/components/ui";
+import { gameTime } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -58,10 +59,7 @@ export default async function ScoresPage({
                   {name(g.home_team_id)} <span className="text-muted">vs</span> {name(g.away_team_id)}
                 </div>
                 <div className="mt-0.5 text-[11px] font-semibold text-muted">
-                  {g.bracket_slot ?? "Pool"} ·{" "}
-                  {g.scheduled_at
-                    ? new Date(g.scheduled_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
-                    : "TBD"}
+                  {g.bracket_slot ?? "Pool"} · {gameTime(g.scheduled_at, tournament.timezone)}
                 </div>
               </div>
               <Badge tone="blue">Post</Badge>

@@ -116,7 +116,7 @@ export default async function TeamPage({
                 <div>
                   <div className="text-[14px] font-bold">vs {nm(oppId)}</div>
                   <div className="text-[11px] font-semibold text-muted">
-                    {g.bracket_slot ?? "Pool"} · {gameDayTime(g.scheduled_at)}
+                    {g.bracket_slot ?? "Pool"} · {gameDayTime(g.scheduled_at, tournament.timezone)}
                   </div>
                 </div>
                 {isFinal ? (

@@ -3,6 +3,7 @@ import { Stepper } from "@/components/Stepper";
 import { Field, inputClass, Button } from "@/components/ui";
 import { PlacesAutocomplete } from "@/components/PlacesAutocomplete";
 import { DivisionPicker } from "@/components/DivisionPicker";
+import { TimezoneSelect } from "@/components/TimezoneSelect";
 import { createTournamentDraft } from "@/app/director/actions";
 
 export default function NewTournamentPage() {
@@ -42,6 +43,10 @@ export default function NewTournamentPage() {
 
         <Field label="Location" hint="Start typing your city or venue and pick a suggestion.">
           <PlacesAutocomplete name="location" placeholder="Tigard, OR" />
+        </Field>
+
+        <Field label="Timezone" hint="Game times are shown in this zone for everyone.">
+          <TimezoneSelect />
         </Field>
 
         <div className="grid grid-cols-2 gap-3">

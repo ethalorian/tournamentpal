@@ -15,20 +15,35 @@ export function dayLabel(t: Pick<Tables<"tournaments">, "start_date" | "end_date
   return `DAY ${diff + 1}`;
 }
 
-/** Short time like "9:00 AM", or "TBD". */
-export function gameTime(iso: string | null): string {
+/** Short time like "9:00 AM", or "TBD". Pinned to the tournament timezone. */
+export function gameTime(iso: string | null, timeZone?: string | null): string {
   if (!iso) return "TBD";
-  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    ...(timeZone ? { timeZone } : {}),
+  });
 }
 
-/** "Sat 9:00 AM". */
-export function gameDayTime(iso: string | null): string {
+/** "Sat 9:00 AM". Pinned to the tournament timezone. */
+export function gameDayTime(iso: string | null, timeZone?: string | null): string {
   if (!iso) return "TBD";
   return new Date(iso).toLocaleString("en-US", {
     weekday: "short",
     hour: "numeric",
     minute: "2-digit",
+    ...(timeZone ? { timeZone } : {}),
   });
+}
+
+/** Short timezone label like "PDT" for display next to times. */
+export function tzAbbrev(iso: string | null, timeZone?: string | null): string {
+  if (!timeZone) return "";
+  const d = iso ? new Date(iso) : new Date();
+  const part = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "short" })
+    .formatToParts(d)
+    .find((p) => p.type === "timeZoneName");
+  return part?.value ?? "";
 }
 
 /** "Jun 28–29" or "Jun 28". */

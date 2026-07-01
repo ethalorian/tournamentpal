@@ -63,6 +63,35 @@ export type ScheduledGame = PlannedGame & {
   conflict?: string | null;
 };
 
+/** Daylight window + game length + buffer that define the concrete slot grid. */
+export type SlotConfig = {
+  days: string[]; // calendar days, e.g. ["2026-07-01"]
+  dayStartMin: number; // minutes from midnight (e.g. 480 = 8:00am)
+  dayEndMin: number; // last moment a game may still be in progress
+  gameLengthMins: number;
+  bufferMins: number;
+  timeZone: string; // IANA tz the wall-clock window is expressed in
+};
+
+/** Per-team hard restrictions. Empty allowlist / null bound = unrestricted. */
+export type TeamConstraint = {
+  allowedFieldIds: string[]; // team only plays on these fields
+  availStartMin: number | null; // can't start before
+  availEndMin: number | null; // must finish by
+};
+
+/** A division may only play within this time-of-day window. */
+export type DivisionWindow = {
+  startMin: number | null;
+  endMin: number | null;
+};
+
+/** A planned game tagged with its division for constraint resolution. */
+export type ConstrainedGame = PlannedGame & {
+  divisionId: string | null;
+  divisionName?: string;
+};
+
 export type GameResult = {
   homeTeamId: string | null;
   awayTeamId: string | null;

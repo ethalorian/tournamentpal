@@ -67,6 +67,13 @@ export default async function DirectorHome() {
         <span className="text-[22px] leading-none">+</span> New tournament
       </Link>
 
+      <Link
+        href="/director/facilities"
+        className="mt-2.5 flex h-11 items-center justify-center gap-2 rounded-2xl border-2 border-ink text-[14px] font-bold"
+      >
+        Manage facilities
+      </Link>
+
       {/* Active */}
       <Eyebrow className="mt-7 mb-3">Active</Eyebrow>
       {active.length === 0 ? (
