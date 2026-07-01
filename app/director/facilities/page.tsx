@@ -11,14 +11,20 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function FacilitiesPage() {
+export default async function FacilitiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dup?: string }>;
+}) {
   const { supabase, user } = await requireUser();
+  const { dup } = await searchParams;
 
   const [{ data: sites }, { data: fields }] = await Promise.all([
     supabase.from("facility_sites").select("*").eq("director_id", user.id).order("name"),
     supabase.from("facility_fields").select("*").eq("director_id", user.id).order("name"),
   ]);
   const siteList = sites ?? [];
+  const dupSite = dup ? siteList.find((s) => s.id === dup) : undefined;
   const fieldsBySite = new Map<string, typeof fields>();
   for (const f of fields ?? []) {
     const arr = fieldsBySite.get(f.facility_site_id) ?? [];
@@ -35,6 +41,18 @@ export default async function FacilitiesPage() {
         facility in with a single tap on the Fields step.
       </p>
 
+      {dupSite && (
+        <div className="mt-4 rounded-xl border-2 border-ink bg-accent/15 px-4 py-3">
+          <div className="text-[13px] font-extrabold">Already in your facilities</div>
+          <div className="mt-0.5 text-[12px] text-muted">
+            You already have <span className="font-bold text-ink">{dupSite.name}</span>
+            {dupSite.address ? ` (${dupSite.address})` : ""} — we didn&apos;t add a
+            duplicate. It&apos;s highlighted below; add diamonds to it or pull it into an
+            event from the Fields step.
+          </div>
+        </div>
+      )}
+
       <Eyebrow className="mt-7 mb-3">
         {siteList.length} {siteList.length === 1 ? "facility" : "facilities"}
       </Eyebrow>
@@ -46,7 +64,12 @@ export default async function FacilitiesPage() {
           {siteList.map((s) => {
             const fs = fieldsBySite.get(s.id) ?? [];
             return (
-              <div key={s.id} className="rounded-2xl border-2 border-ink p-4">
+              <div
+                key={s.id}
+                className={`rounded-2xl border-2 border-ink p-4 ${
+                  s.id === dup ? "bg-accent/15 ring-2 ring-accent" : ""
+                }`}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="font-extrabold text-[16px]">{s.name}</div>

@@ -30,12 +30,44 @@ export async function addFacilitySite(formData: FormData) {
   const placeName = String(formData.get("place_name") ?? "").trim();
   const geo = !hasCoords && (address || name) ? await geocodePlace(address || name) : null;
 
+  const finalName = name || placeName || geo?.name || "Facility";
+  const finalAddress = (geo?.address ?? address) || null;
+  const lat = hasCoords ? clat : geo?.lat ?? null;
+  const lng = hasCoords ? clng : geo?.lng ?? null;
+
+  // Don't create duplicates in the director's library. Match an existing
+  // facility by normalized name, identical address, or near-identical coords.
+  // If we find one, skip the insert and suggest the existing facility instead.
+  const norm = (s: string | null) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const { data: mine } = await supabase
+    .from("facility_sites")
+    .select("id, name, address, lat, lng")
+    .eq("director_id", user.id);
+
+  const candName = norm(finalName);
+  const candAddr = norm(finalAddress);
+  const dup = (mine ?? []).find((s) => {
+    if (candName && norm(s.name) === candName) return true;
+    if (candAddr && norm(s.address) === candAddr) return true;
+    if (lat != null && lng != null && s.lat != null && s.lng != null) {
+      const dLat = (s.lat - lat) * 111_320;
+      const dLng = (s.lng - lng) * 111_320 * Math.cos((lat * Math.PI) / 180);
+      if (Math.hypot(dLat, dLng) < 75) return true; // within ~75 m
+    }
+    return false;
+  });
+
+  if (dup) {
+    // Suggest the existing facility (see the banner on the facilities page).
+    redirect(`/director/facilities?dup=${dup.id}`);
+  }
+
   await supabase.from("facility_sites").insert({
     director_id: user.id,
-    name: name || placeName || geo?.name || "Facility",
-    address: (geo?.address ?? address) || null,
-    lat: hasCoords ? clat : geo?.lat ?? null,
-    lng: hasCoords ? clng : geo?.lng ?? null,
+    name: finalName,
+    address: finalAddress,
+    lat,
+    lng,
     parking_info: parking,
   });
 

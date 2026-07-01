@@ -2,7 +2,7 @@ import Link from "next/link";
 import { loadOwnedTournament } from "@/lib/tournament";
 import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { Stepper } from "@/components/Stepper";
-import { Button, Eyebrow, Stat, Card } from "@/components/ui";
+import { Button, LinkButton, Eyebrow, Stat, Card } from "@/components/ui";
 import { getPreset } from "@/lib/engine/presets";
 import { gameTime } from "@/lib/format";
 import {
@@ -46,7 +46,18 @@ export default async function ReviewStep({ params }: { params: Promise<{ id: str
         {preset?.name ?? "No format chosen"} · {teamCount ?? 0} teams
       </p>
 
-      {!hasSchedule ? (
+      {!preset ? (
+        <Card className="mt-6">
+          <div className="display text-[16px]">Choose a format first</div>
+          <p className="mt-1.5 text-[13px] text-muted">
+            Pick how the tournament runs — pool play, a bracket, or round robin —
+            before we can generate the schedule.
+          </p>
+          <LinkButton href={`/director/${id}/format`} variant="ink" className="mt-4 w-full">
+            Choose a format →
+          </LinkButton>
+        </Card>
+      ) : !hasSchedule ? (
         <Card className="mt-6">
           <div className="display text-[16px]">Generate the schedule</div>
           <p className="mt-1.5 text-[13px] text-muted">
