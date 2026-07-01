@@ -2,9 +2,12 @@ import { notFound } from "next/navigation";
 import { loadPublicTournament } from "@/lib/public";
 import { FollowerShell } from "@/components/FollowerShell";
 import { FollowButton } from "@/components/FollowButton";
-import { Eyebrow, Badge, EmptyState } from "@/components/ui";
+import { Eyebrow, Badge, EmptyState, Stat } from "@/components/ui";
 import { dayLabel, gameDayTime } from "@/lib/format";
 import { buildStandingsTables } from "@/lib/standings-data";
+import { projectSeeding } from "@/lib/engine/seeding";
+import { getPreset } from "@/lib/engine/presets";
+import { DEFAULT_RULES } from "@/lib/engine/standings";
 import type { Rules } from "@/lib/engine/types";
 
 export const dynamic = "force-dynamic";
@@ -45,9 +48,33 @@ export default async function TeamPage({
 
   const rules = (tournament.rules ?? undefined) as Rules | undefined;
   const tables = await buildStandingsTables(supabase, id, rules);
-  const myTable = poolTeam.data?.pool_id
-    ? tables.find((t) => t.poolId === poolTeam.data!.pool_id)
-    : tables[0];
+  const poolId = poolTeam.data?.pool_id ?? null;
+  const myTable = poolId ? tables.find((t) => t.poolId === poolId) : tables[0];
+
+  // Seeding outlook — current standing + best/worst finish given remaining games.
+  const poolGamesQuery = poolId
+    ? supabase.from("games").select("home_team_id,away_team_id,home_score,away_score,status").eq("pool_id", poolId)
+    : supabase
+        .from("games")
+        .select("home_team_id,away_team_id,home_score,away_score,status")
+        .eq("tournament_id", id)
+        .eq("stage", "pool");
+  const { data: poolGames } = await poolGamesQuery;
+  const poolResults = (poolGames ?? []).map((g) => ({
+    homeTeamId: g.home_team_id,
+    awayTeamId: g.away_team_id,
+    homeScore: g.home_score,
+    awayScore: g.away_score,
+    status: g.status,
+  }));
+  const format = (tournament.format ?? {}) as { presetId?: string; bracketTeams?: number };
+  const preset = format.presetId ? getPreset(format.presetId) : undefined;
+  const bracketTeams = format.bracketTeams ?? preset?.bracketTeams ?? 0;
+  const members = (myTable?.rows ?? []).map((r) => ({ id: r.teamId, name: r.name }));
+  const outlook =
+    members.length >= 2
+      ? projectSeeding(members, poolResults, teamId, rules ?? DEFAULT_RULES, bracketTeams)
+      : null;
 
   return (
     <FollowerShell
@@ -131,6 +158,48 @@ export default async function TeamPage({
                 </span>
               </div>
             ))}
+          </div>
+        </>
+      )}
+
+      {outlook && (
+        <>
+          <Eyebrow className="mb-2 mt-7">Seeding outlook</Eyebrow>
+          <div className="rounded-2xl border-2 border-ink p-4">
+            <div className="flex gap-6">
+              <Stat value={`#${outlook.currentRank}`} label={`of ${outlook.totalTeams}`} />
+              <Stat value={outlook.remaining} label="games left" />
+              {outlook.bracketTeams > 0 && (
+                <Stat
+                  value={outlook.currentlyIn ? "IN" : "OUT"}
+                  label="bracket"
+                  accent={outlook.currentlyIn ? undefined : "danger"}
+                />
+              )}
+            </div>
+
+            {outlook.remaining > 0 ? (
+              <p className="mt-3 text-[13px] leading-snug">
+                Win out and you finish as high as <b className="text-ink">#{outlook.bestRank}</b>; lose out and
+                you could fall to <b className="text-ink">#{outlook.worstRank}</b>.
+              </p>
+            ) : (
+              <p className="mt-3 text-[13px] text-muted">Pool play is complete — this is your final seeding.</p>
+            )}
+
+            {outlook.bracketTeams > 0 && (
+              <div className="mt-3">
+                {outlook.clinched ? (
+                  <Badge tone="success">Clinched a bracket spot</Badge>
+                ) : outlook.eliminated ? (
+                  <Badge tone="danger">Eliminated from the bracket</Badge>
+                ) : outlook.currentlyIn ? (
+                  <Badge tone="accent">In the top {outlook.bracketTeams} — not yet clinched</Badge>
+                ) : (
+                  <Badge tone="muted">Outside the top {outlook.bracketTeams} — still in reach</Badge>
+                )}
+              </div>
+            )}
           </div>
         </>
       )}

@@ -88,7 +88,9 @@ field-assign UI, quiet hours, iOS splash).
 | Screen | Status | Notes |
 |---|---|---|
 | 15b Team page | ✅ | Schedule + pool standings + follow. |
-| 15a Personalized home (switch followed teams) | 🟡 | Public home exists; **no "scope to my followed team" switcher.** |
+| 15a Personalized home (switch followed teams) | 🟡 | Team **filter** on the schedule + per-team **seeding outlook** on the team page. No persistent home-level team switcher yet. |
+| Bracket view (implied by 1a/1c) | ✅ | Games ⇄ **Bracket** toggle on the schedule, rounds as columns, your team highlighted. |
+| Seeding projections (beyond mockups) | ✅ | Team page shows current seed + best/worst finish + clinch/eliminated, computed from remaining games. |
 
 ## Add existing teams from records (16a–16b)
 | Screen | Status | Notes |

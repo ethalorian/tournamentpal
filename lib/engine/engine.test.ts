@@ -10,6 +10,7 @@ import {
 } from "./schedule";
 import { computeStandings, DEFAULT_RULES } from "./standings";
 import { computeBracketAdvancement } from "./bracket";
+import { projectSeeding } from "./seeding";
 import { suggestPreset, getPreset } from "./presets";
 import type { EngineTeam, GameResult } from "./types";
 
@@ -185,6 +186,36 @@ test("computeBracketAdvancement: no advance until a game is final", () => {
   const f = updates.find((u) => u.id === "F");
   assert.equal(f?.home_team_id ?? null, null);
   assert.equal(f?.away_team_id, "t2");
+});
+
+test("projectSeeding: current/best/worst range + clinch", () => {
+  const t = teams(3); // t1,t2,t3
+  const games = [
+    { homeTeamId: "t1", awayTeamId: "t2", homeScore: 7, awayScore: 3, status: "final" },
+    { homeTeamId: "t1", awayTeamId: "t3", homeScore: null, awayScore: null, status: "scheduled" },
+    { homeTeamId: "t2", awayTeamId: "t3", homeScore: null, awayScore: null, status: "scheduled" },
+  ];
+  const o = projectSeeding(t, games, "t1", DEFAULT_RULES, 2);
+  assert.equal(o.currentRank, 1);
+  assert.equal(o.bestRank, 1);
+  assert.ok(o.worstRank >= o.currentRank);
+  assert.equal(o.remaining, 1); // t1 vs t3
+  assert.ok(o.clinched); // 1-0 leader, worst case still top 2
+  assert.equal(o.eliminated, false);
+});
+
+test("projectSeeding: no remaining games → best = worst = current", () => {
+  const t = teams(3);
+  const games = [
+    { homeTeamId: "t1", awayTeamId: "t2", homeScore: 5, awayScore: 1, status: "final" },
+    { homeTeamId: "t1", awayTeamId: "t3", homeScore: 6, awayScore: 0, status: "final" },
+    { homeTeamId: "t2", awayTeamId: "t3", homeScore: 4, awayScore: 2, status: "final" },
+  ];
+  const o = projectSeeding(t, games, "t1", DEFAULT_RULES, 2);
+  assert.equal(o.remaining, 0);
+  assert.equal(o.bestRank, o.currentRank);
+  assert.equal(o.worstRank, o.currentRank);
+  assert.equal(o.currentRank, 1);
 });
 
 test("suggestPreset: scales with team count", () => {
