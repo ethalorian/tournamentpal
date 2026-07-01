@@ -7,6 +7,7 @@ export function TournamentNav({ id }: { id: string }) {
   const pathname = usePathname();
   const tabs = [
     { href: `/director/${id}`, label: "Overview", exact: true },
+    { href: `/director/${id}/teams`, label: "Teams" },
     { href: `/director/${id}/scores`, label: "Scores" },
     { href: `/director/${id}/standings`, label: "Standings" },
     { href: `/director/${id}/messages`, label: "Messages" },

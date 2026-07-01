@@ -129,7 +129,7 @@ export default async function FieldsPage({
   if (isWizard) {
     return (
       <DirectorShell showTabs={false}>
-        <BackLink href={`/director/${id}/teams`} label="Teams" />
+        <BackLink href={`/director/${id}/teams?setup=1`} label="Teams" />
         <div className="mt-4">
           <Stepper step={3} total={5} label="Fields & locations" />
         </div>

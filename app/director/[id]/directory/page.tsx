@@ -10,10 +10,10 @@ export default async function TeamDirectory({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; setup?: string }>;
 }) {
   const { id } = await params;
-  const { q } = await searchParams;
+  const { q, setup } = await searchParams;
   const { supabase, user } = await loadOwnedTournament(id);
 
   // The director's other events, to source teams from.
@@ -59,7 +59,7 @@ export default async function TeamDirectory({
 
   return (
     <DirectorShell showTabs={false}>
-      <BackLink href={`/director/${id}/teams?setup=1`} label="Teams" />
+      <BackLink href={`/director/${id}/teams${setup === "1" ? "?setup=1" : ""}`} label="Teams" />
       <h1 className="display mt-3 text-[26px]">Reuse a team</h1>
       <p className="mt-1.5 text-[13px] text-muted">
         Add teams from your past events — the coach on file comes with them.

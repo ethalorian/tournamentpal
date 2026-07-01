@@ -69,7 +69,7 @@ export async function createTournamentDraft(formData: FormData) {
   }
 
   revalidatePath("/director");
-  redirect(`/director/${tournament.id}/teams`);
+  redirect(`/director/${tournament.id}/teams?setup=1`);
 }
 
 /* ------------------------------ Teams ------------------------------ */
