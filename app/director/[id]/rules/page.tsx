@@ -2,6 +2,7 @@ import { loadOwnedTournament } from "@/lib/tournament";
 import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { TournamentNav } from "@/components/TournamentNav";
 import { RulesEditor } from "@/components/RulesEditor";
+import { RulesSummarizer } from "@/components/RulesSummarizer";
 import { DEFAULT_RULES } from "@/lib/engine/standings";
 import type { Rules } from "@/lib/engine/types";
 
@@ -11,6 +12,8 @@ export default async function RulesPage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   const { tournament } = await loadOwnedTournament(id);
   const rules = (tournament.rules ?? DEFAULT_RULES) as Rules;
+  const documentSummary =
+    ((tournament.rules ?? {}) as { documentSummary?: string }).documentSummary ?? "";
 
   return (
     <DirectorShell>
@@ -26,6 +29,8 @@ export default async function RulesPage({ params }: { params: Promise<{ id: stri
           initialTimeLimit={rules.timeLimitMins ?? DEFAULT_RULES.timeLimitMins}
         />
       </div>
+
+      <RulesSummarizer tournamentId={id} initialSummary={documentSummary} />
     </DirectorShell>
   );
 }

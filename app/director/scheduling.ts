@@ -184,6 +184,19 @@ export async function saveGameWindows(formData: FormData) {
   revalidatePath(`/director/${tournamentId}/scheduling`);
 }
 
+/** Pin (or auto) the field for a single game — used for championship games. */
+export async function setGameField(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const gameId = String(formData.get("game_id") ?? "");
+  const fieldId = String(formData.get("field_id") ?? "") || null;
+  if (!gameId) return;
+  await supabase.from("games").update({ field_id: fieldId }).eq("id", gameId);
+  revalidatePath(`/director/${tournamentId}/scheduling`);
+  revalidatePath(`/director/${tournamentId}/scores`);
+  revalidatePath(`/t/${tournamentId}/schedule`);
+}
+
 /** Save config/constraints implicitly then rebuild the schedule. */
 export async function regenerateWithConstraints(formData: FormData) {
   const { supabase } = await client();

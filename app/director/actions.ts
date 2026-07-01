@@ -7,8 +7,7 @@ import { regenerateSchedule, advanceBracket } from "@/lib/schedule-builder";
 import { geocodePlace } from "@/lib/geocode";
 import { notifyFollowers } from "@/lib/notify";
 import { computeStandings, DEFAULT_RULES } from "@/lib/engine/standings";
-import { bracketSeedOrder } from "@/lib/engine/schedule";
-import { getPreset, powerOfTwoCeil } from "@/lib/engine/presets";
+import { getPreset } from "@/lib/engine/presets";
 import type { GameResult, Rules, TiebreakerKey } from "@/lib/engine/types";
 
 async function client() {
@@ -421,13 +420,40 @@ export async function saveRules(formData: FormData) {
   const runRule = Number(formData.get("run_rule") ?? 0);
   const timeLimitMins = Number(formData.get("time_limit") ?? 0);
 
-  const rules: Rules = {
+  // Preserve extra keys (e.g. the uploaded document summary) already in rules.
+  const { data: existing } = await supabase
+    .from("tournaments")
+    .select("rules")
+    .eq("id", tournamentId)
+    .single();
+  const prev = (existing?.rules ?? {}) as Record<string, unknown>;
+  const rules = {
+    ...prev,
     tiebreakers: tiebreakers.length ? tiebreakers : DEFAULT_RULES.tiebreakers,
     runRule,
     timeLimitMins,
   };
   await supabase.from("tournaments").update({ rules: rules as never }).eq("id", tournamentId);
   revalidatePath(`/director/${tournamentId}/rules`);
+}
+
+/** Save the AI summary of the uploaded rules document (kept in rules JSON). */
+export async function saveRulesSummary(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const summary = String(formData.get("summary") ?? "").trim();
+  const { data: existing } = await supabase
+    .from("tournaments")
+    .select("rules")
+    .eq("id", tournamentId)
+    .single();
+  const prev = (existing?.rules ?? {}) as Record<string, unknown>;
+  await supabase
+    .from("tournaments")
+    .update({ rules: { ...prev, documentSummary: summary } as never })
+    .eq("id", tournamentId);
+  revalidatePath(`/director/${tournamentId}/rules`);
+  revalidatePath(`/t/${tournamentId}`);
 }
 
 /* ------------------------------ Scores ----------------------------- */
@@ -492,42 +518,49 @@ export async function seedBracket(formData: FormData) {
       .order("created_at"),
   ]);
 
-  const results: GameResult[] = (games ?? []).map((g) => ({
-    homeTeamId: g.home_team_id,
-    awayTeamId: g.away_team_id,
-    homeScore: g.home_score,
-    awayScore: g.away_score,
-    status: g.status,
-  }));
+  // Seed each division's bracket independently: rank only that division's teams
+  // from its own pool results, then fill that division's round-1 games. A
+  // 16U bracket is fed only by 16U pools, never mixed with 18U.
+  const teamList = teams ?? [];
+  const poolGames = games ?? [];
+  const round1 = bracketGames ?? [];
+  const divisionKeys = [...new Set(teamList.map((t) => t.division_id ?? "__none"))];
 
-  const standings = computeStandings(
-    (teams ?? []).map((t) => ({ id: t.id, name: t.name, seed: t.seed })),
-    results,
-    rules
-  );
-  const seedToTeam = standings.slice(0, bracketTeams).map((s) => s.teamId);
+  for (const divKey of divisionKeys) {
+    const divId = divKey === "__none" ? null : divKey;
+    const divTeams = teamList.filter((t) => (t.division_id ?? null) === divId);
+    const divResults: GameResult[] = poolGames
+      .filter((g) => (g.division_id ?? null) === divId)
+      .map((g) => ({
+        homeTeamId: g.home_team_id,
+        awayTeamId: g.away_team_id,
+        homeScore: g.home_score,
+        awayScore: g.away_score,
+        status: g.status,
+      }));
 
-  // Map seed numbers in first-round games to team ids using bracket order.
-  const size = powerOfTwoCeil(bracketTeams);
-  const order = bracketSeedOrder(size);
-  const teamBySeedNumber = (seed: number | null): string | null => {
-    if (!seed) return null;
-    return seedToTeam[seed - 1] ?? null;
-  };
+    const standings = computeStandings(
+      divTeams.map((t) => ({ id: t.id, name: t.name, seed: t.seed })),
+      divResults,
+      rules
+    );
+    const seedToTeam = standings.slice(0, bracketTeams).map((s) => s.teamId);
+    const teamBySeedNumber = (seed: number | null): string | null =>
+      seed ? seedToTeam[seed - 1] ?? null : null;
 
-  for (const g of bracketGames ?? []) {
-    await supabase
-      .from("games")
-      .update({
-        home_team_id: teamBySeedNumber(g.home_seed),
-        away_team_id: teamBySeedNumber(g.away_seed),
-      })
-      .eq("id", g.id);
+    const divBracket = round1.filter((g) => (g.division_id ?? null) === divId);
+    for (const g of divBracket) {
+      await supabase
+        .from("games")
+        .update({
+          home_team_id: teamBySeedNumber(g.home_seed),
+          away_team_id: teamBySeedNumber(g.away_seed),
+        })
+        .eq("id", g.id);
+    }
   }
 
-  // Cascade any already-decided rounds forward.
+  // Cascade any already-decided rounds forward (per division).
   await advanceBracket(supabase, tournamentId);
-
-  void order;
   revalidatePath(`/director/${tournamentId}/standings`);
 }

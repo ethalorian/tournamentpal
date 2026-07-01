@@ -114,3 +114,22 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* "Saved ✓" confirmation pop used by SaveButton. */
+@keyframes pop-check {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-pop-check {
+  animation: pop-check 0.4s ease-out;
+}

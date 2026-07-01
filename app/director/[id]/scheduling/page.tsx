@@ -3,6 +3,7 @@ import { DirectorShell, BackLink } from "@/components/DirectorShell";
 import { TournamentNav } from "@/components/TournamentNav";
 import { Eyebrow, Field, inputClass, Button, Badge, Card } from "@/components/ui";
 import { TimezoneSelect } from "@/components/TimezoneSelect";
+import { SaveButton } from "@/components/SaveButton";
 import {
   saveScheduleConfig,
   saveDivisionWindow,
@@ -13,6 +14,7 @@ import {
   saveGameWindows,
   saveDayStages,
   saveDayGrids,
+  setGameField,
 } from "@/app/director/scheduling";
 
 export const dynamic = "force-dynamic";
@@ -34,12 +36,27 @@ export default async function SchedulingPage({
     supabase.from("divisions").select("*").eq("tournament_id", id).order("sort"),
     supabase.from("teams").select("*").eq("tournament_id", id).order("seed"),
     supabase.from("fields").select("*").eq("tournament_id", id).order("name"),
-    supabase.from("games").select("id,home_team_id,away_team_id,scheduled_at,field_id,stage").eq("tournament_id", id),
+    supabase
+      .from("games")
+      .select("id,home_team_id,away_team_id,scheduled_at,field_id,stage,round,bracket_slot,division_id")
+      .eq("tournament_id", id),
   ]);
   const divList = divisions ?? [];
   const teamList = teams ?? [];
   const fieldList = fields ?? [];
   const teamName = new Map(teamList.map((t) => [t.id, t.name]));
+  const divNameById = new Map(divList.map((d) => [d.id, d.name]));
+
+  // Championship game per division = the final (highest bracket round).
+  const bracketGames = (games ?? []).filter((g) => g.stage === "bracket");
+  const maxRoundByDiv = new Map<string, number>();
+  for (const g of bracketGames) {
+    const k = g.division_id ?? "_";
+    maxRoundByDiv.set(k, Math.max(maxRoundByDiv.get(k) ?? 0, g.round ?? 0));
+  }
+  const championshipGames = bracketGames.filter(
+    (g) => (g.round ?? 0) === maxRoundByDiv.get(g.division_id ?? "_")
+  );
 
   const cfg = { ...DEFAULTS, ...((tournament.schedule_config ?? {}) as Partial<typeof DEFAULTS>) };
 
@@ -194,23 +211,28 @@ export default async function SchedulingPage({
           <Field label="Timezone" hint="All game times are shown in this zone for everyone.">
             <TimezoneSelect value={tournament.timezone} />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="First game start">
+          <div className="grid grid-cols-2 items-end gap-3">
+            <label className="flex flex-col">
+              <span className="eyebrow mb-2">First game</span>
               <input name="day_start" type="time" defaultValue={cfg.dayStart} className={inputClass} />
-            </Field>
-            <Field label="Day end (last game out by)">
+            </label>
+            <label className="flex flex-col">
+              <span className="eyebrow mb-2">Last game out</span>
               <input name="day_end" type="time" defaultValue={cfg.dayEnd} className={inputClass} />
-            </Field>
+            </label>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Game length (min)">
+          <div className="grid grid-cols-2 items-end gap-3">
+            <label className="flex flex-col">
+              <span className="eyebrow mb-2">Game length</span>
               <input name="game_length" type="number" inputMode="numeric" defaultValue={cfg.gameLengthMins} className={inputClass} />
-            </Field>
-            <Field label="Buffer between games (min)">
+            </label>
+            <label className="flex flex-col">
+              <span className="eyebrow mb-2">Buffer</span>
               <input name="buffer" type="number" inputMode="numeric" defaultValue={cfg.bufferMins} className={inputClass} />
-            </Field>
+            </label>
           </div>
-          <Button type="submit" variant="ink" className="w-full">Save playing window</Button>
+          <p className="-mt-1 text-[11px] text-muted">Game length &amp; buffer are in minutes.</p>
+          <SaveButton>Save playing window</SaveButton>
         </form>
       </Card>
 
@@ -247,9 +269,7 @@ export default async function SchedulingPage({
                   </select>
                 </div>
               ))}
-              <Button type="submit" variant="ink" className="w-full">
-                Save day types
-              </Button>
+              <SaveButton savedLabel="Days saved ✓">Save day types</SaveButton>
             </form>
           </Card>
         </>
@@ -277,7 +297,7 @@ export default async function SchedulingPage({
                       <input name="window_end" type="time" defaultValue={d.window_end ?? ""} className={inputClass} />
                     </Field>
                   </div>
-                  <Button type="submit" variant="ink" className="w-full">Save</Button>
+                  <SaveButton>Save</SaveButton>
                 </form>
               </Card>
             ))}
@@ -335,9 +355,7 @@ export default async function SchedulingPage({
                   </label>
                 </div>
               ))}
-              <Button type="submit" variant="ink" className="w-full">
-                Save day windows
-              </Button>
+              <SaveButton savedLabel="Windows saved ✓">Save day windows</SaveButton>
             </form>
           </Card>
 
@@ -382,9 +400,7 @@ export default async function SchedulingPage({
                   </div>
                 </div>
               ))}
-              <Button type="submit" variant="ink" className="w-full">
-                Save game windows
-              </Button>
+              <SaveButton savedLabel="Painted ✓">Save game windows</SaveButton>
             </form>
           </Card>
           )}
@@ -440,7 +456,7 @@ export default async function SchedulingPage({
                     <input name="avail_end" type="time" defaultValue={t.avail_end ?? ""} className={inputClass} />
                   </Field>
                 </div>
-                <Button type="submit" variant="ink" className="w-full">Save team rules</Button>
+                <SaveButton>Save team rules</SaveButton>
               </form>
             </Card>
           ))}
@@ -494,9 +510,7 @@ export default async function SchedulingPage({
                   <option value="separate">Never at the same time (any division)</option>
                 </select>
               </Field>
-              <Button type="submit" variant="ink" className="w-full">
-                Add rule
-              </Button>
+              <SaveButton savedLabel="Rule added ✓">Add rule</SaveButton>
             </form>
           </Card>
 
@@ -527,6 +541,47 @@ export default async function SchedulingPage({
               })}
             </div>
           )}
+        </>
+      )}
+
+      {/* 6 · Championship fields */}
+      {championshipGames.length > 0 && (
+        <>
+          <Eyebrow className="mt-7 mb-3">Championship fields</Eyebrow>
+          <p className="-mt-1 mb-3 text-[12px] text-muted">
+            Pin the field for each division&rsquo;s final. &ldquo;Auto&rdquo; lets the
+            scheduler place it.
+          </p>
+          <div className="flex flex-col gap-2">
+            {championshipGames.map((g) => (
+              <Card key={g.id}>
+                <form action={setGameField} className="flex flex-col gap-3">
+                  <input type="hidden" name="tournament_id" value={id} />
+                  <input type="hidden" name="game_id" value={g.id} />
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-bold">
+                      {g.division_id ? divNameById.get(g.division_id) ?? "" : "Championship"}
+                      {" · "}
+                      {g.bracket_slot ?? "Final"}
+                    </span>
+                    <select
+                      name="field_id"
+                      defaultValue={g.field_id ?? ""}
+                      className={`${inputClass} w-40`}
+                    >
+                      <option value="">Auto-assign</option>
+                      {fieldList.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <SaveButton savedLabel="Field set ✓">Set championship field</SaveButton>
+                </form>
+              </Card>
+            ))}
+          </div>
         </>
       )}
 

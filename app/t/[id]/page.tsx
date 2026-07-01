@@ -53,6 +53,42 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
 
       <InstallPrompt />
 
+      {/* Sponsors — top of the follower view */}
+      {sponsors && sponsors.length > 0 && (
+        <div className="mb-6 rounded-2xl border border-faint bg-white p-3">
+          <Eyebrow className="mb-2 text-center">Proudly sponsored by</Eyebrow>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {sponsors.map((s) => {
+              const inner = s.logo_url ? (
+                <span
+                  className={`flex items-center justify-center rounded-xl p-2 ${
+                    s.tier === "headline" ? "bg-accent" : "border border-faint bg-white"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={s.logo_url} alt={s.name} className="h-10 max-w-[140px] object-contain" />
+                </span>
+              ) : (
+                <span
+                  className={`display rounded-xl px-3 py-2 text-[13px] ${
+                    s.tier === "headline" ? "bg-accent text-ink" : "border border-faint text-ink"
+                  }`}
+                >
+                  {s.name}
+                </span>
+              );
+              return s.url ? (
+                <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer">
+                  {inner}
+                </a>
+              ) : (
+                <span key={s.id}>{inner}</span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Next up */}
       <Eyebrow className="mb-3">Next up</Eyebrow>
       {upcoming.length === 0 ? (
@@ -140,41 +176,6 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
           <AlertsPhone tournamentId={tid} phone={profileRes?.data?.phone ?? null} followingCount={followed.size} />
           <PushToggle />
         </>
-      )}
-
-      {sponsors && sponsors.length > 0 && (
-        <div className="mt-8">
-          <Eyebrow className="mb-2 text-center">Proudly sponsored by</Eyebrow>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {sponsors.map((s) => {
-              const inner = s.logo_url ? (
-                <span
-                  className={`flex items-center justify-center rounded-xl p-2 ${
-                    s.tier === "headline" ? "bg-accent" : "border border-faint bg-white"
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={s.logo_url} alt={s.name} className="h-10 max-w-[140px] object-contain" />
-                </span>
-              ) : (
-                <span
-                  className={`display rounded-xl px-3 py-2 text-[13px] ${
-                    s.tier === "headline" ? "bg-accent text-ink" : "border border-faint text-ink"
-                  }`}
-                >
-                  {s.name}
-                </span>
-              );
-              return s.url ? (
-                <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer">
-                  {inner}
-                </a>
-              ) : (
-                <span key={s.id}>{inner}</span>
-              );
-            })}
-          </div>
-        </div>
       )}
 
       {divisions && divisions.length > 0 && (
