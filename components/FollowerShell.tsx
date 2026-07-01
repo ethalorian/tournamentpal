@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { FollowerNav } from "./FollowerNav";
+import { BackLink } from "./DirectorShell";
 
 /**
  * Public follower frame: a dark TournamentPal bar, scrollable content, and a
@@ -11,12 +12,16 @@ export function FollowerShell({
   tournamentName,
   dayLabel,
   hold,
+  backHref,
+  backLabel,
   children,
 }: {
   id: string;
   tournamentName: string;
   dayLabel?: string;
   hold?: { status: string | null; note: string | null; until: string | null };
+  backHref?: string;
+  backLabel?: string;
   children: ReactNode;
 }) {
   return (
@@ -29,6 +34,11 @@ export function FollowerShell({
       </header>
       <div className="flex-1 px-5 pb-6 pt-5 md:order-3 md:px-9 md:pt-7">
         {hold?.status && <HoldBanner status={hold.status} note={hold.note} until={hold.until} />}
+        {backHref && (
+          <div className="mb-3">
+            <BackLink href={backHref} label={backLabel ?? "Back"} />
+          </div>
+        )}
         <div className="mb-4">
           <h1 className="display text-[22px] leading-tight md:text-[28px]">{tournamentName}</h1>
         </div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AuthForm } from "@/components/AuthForm";
+import { BackButton } from "@/components/BackButton";
 import { Eyebrow } from "@/components/ui";
 
 export default async function LoginPage({
@@ -10,6 +11,9 @@ export default async function LoginPage({
   const { next, error } = await searchParams;
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[460px] flex-col px-6 py-10">
+      <div className="mb-4">
+        <BackButton fallback="/" />
+      </div>
       <Link href="/" className="display text-[18px] tracking-[2px]">
         TOURNAMENTPAL
       </Link>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { Eyebrow, inputClass, Button, Field } from "@/components/ui";
+import { BackButton } from "@/components/BackButton";
 import { PushToggle } from "@/components/PushToggle";
 import { saveAlertPrefs } from "@/app/alerts/actions";
 
@@ -67,6 +68,9 @@ export default async function AlertsPrefs({
       </header>
 
       <div className="flex-1 px-5 pb-10 pt-6 md:px-9">
+        <div className="mb-4">
+          <BackButton fallback={next ?? "/"} />
+        </div>
         <Eyebrow>Notifications</Eyebrow>
         <h1 className="display mt-1.5 text-[28px]">Alert preferences</h1>
         <p className="mt-1 text-[13px] text-muted">

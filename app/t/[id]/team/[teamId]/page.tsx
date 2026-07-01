@@ -55,6 +55,8 @@ export default async function TeamPage({
       tournamentName={tournament.name}
       dayLabel={dayLabel(tournament)}
       hold={{ status: tournament.hold_status, note: tournament.hold_note, until: tournament.hold_until }}
+      backHref={`/t/${id}`}
+      backLabel="Tournament home"
     >
       <div className="-mt-2 flex items-center justify-between">
         <div className="flex items-center gap-3">

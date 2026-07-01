@@ -3,13 +3,17 @@
 _What's built vs. the provided design mockups (`Follower Views.dc.html`)._
 Legend: ✅ built · 🟡 partial · ⬜ missing
 
-Roughly **40 of ~55** designed screens are built. The three core persona loops
-are complete, plus bracket auto-advance, weather holds (12d/13c), concessions
-(8a–c), discovery (2f), staff & roles + scorekeeper scoring (17b), sponsors
-(17a), CSV import (3c), **real SMS + Web Push notifications**, and the **PWA
-(icons, install prompt, offline)**. What's still missing: **payments/plans
-(2b/2d/2e), notification-category prefs (13b), the cross-event team directory
-(16a/b), and a self-serve registration link (3c).**
+Roughly **43 of ~55** designed screens are built. All three persona loops are
+complete, plus bracket auto-advance, weather holds, concessions, discovery,
+staff & roles, sponsors (with logo upload), CSV import, notification-preference
+hub, **real SMS + Web Push**, the **PWA** (icons, install prompt, offline),
+**Places autocomplete/geocoding** for locations, and **fully manual texting**
+(nothing sends automatically).
+
+**The only feature area entirely unbuilt is payments/plans (2b/2d/2e).** The
+team directory (16a/b) and self-serve registration link (3c) are now done.
+Everything else remaining is partial/polish (personalized follower home, manual
+field-assign UI, quiet hours, iOS splash).
 
 ---
 
@@ -25,7 +29,7 @@ are complete, plus bracket auto-advance, weather holds (12d/13c), concessions
 | 2c Director sign up | ✅ | Email signup, role baked in. |
 | 2a Welcome (three doors) | 🟡 | Landing hero exists; not the explicit get-started/paste-link/explore split. |
 | 2g Follower invite link | 🟡 | Tapping a link opens `/t/[id]`; no dedicated "one tap to follow" invite screen. |
-| 2h Follower follow & alerts | ✅ | Follow + phone capture; **real Twilio SMS** on score/weather/concessions when creds set. Per-category prefs (13b) still pending. |
+| 2h Follower follow & alerts | ✅ | Follow + phone + push; real Twilio SMS & Web Push; per-category prefs at `/alerts`. |
 | 2b Choose role (director pays / follower free) | ⬜ | No role-selection screen. |
 | 2d Director plan (per-event / season pass) | ⬜ | **No plans.** |
 | 2e Director payment (Apple Pay / card) | ⬜ | **No payment.** Stubbed entirely. |
@@ -37,13 +41,13 @@ are complete, plus bracket auto-advance, weather holds (12d/13c), concessions
 | 3a Dashboard | ✅ | Active + past events. |
 | 3b Details (sport, dates, divisions) | ✅ | |
 | 3d Pick a format / 3e Customize (live summary) | ✅ | Presets + live game-count recompute. |
-| 3f Review & publish (seeded bracket) | ✅ | Publish flips public + (stub) notify. |
-| 3c Add teams | 🟡 | Manual typing + **CSV paste** now supported. Still no self-serve registration link. |
+| 3f Review & publish (seeded bracket) | ✅ | Publish makes it public; texting is a separate manual action. |
+| 3c Add teams | ✅ | Manual typing, CSV paste, **reuse from past events**, and a **self-serve registration link**. |
 
 ## Director — fields & scoring & rules (4–7)
 | Screen | Status | Notes |
 |---|---|---|
-| 4a Fields & locations / 4b Add a field | ✅ | Now a wizard step. **No map pin / visual map.** |
+| 4a Fields & locations / 4b Add a field | ✅ | Wizard step + **Places autocomplete/geocoding** (address → coordinates). No embedded map view. |
 | 5a Post queue / 5b Enter score / 5c Posted | ✅ | 5c "nudge to next game" is light. |
 | 6a Rules & tiebreakers | ✅ | Reorder via up/down (not drag); run rule + time limit. |
 | 7a Field age restrictions | ✅ | Fence + allowed divisions per field. |
@@ -72,7 +76,7 @@ are complete, plus bracket auto-advance, weather holds (12d/13c), concessions
 | Screen | Status | Notes |
 |---|---|---|
 | 13a Directions & parking | ✅ | Venues, parking, open in Maps. |
-| 13b Notifications hub (per category, quiet hours) | ⬜ | **Missing.** |
+| 13b Notifications hub (per category, quiet hours) | 🟡 | `/alerts` hub: channels (SMS/push) + categories, enforced in the send layer. **Quiet hours deferred** (needs per-user timezone). |
 | 13c Weather hold (follower view) | ✅ | Live banner across all follower views. |
 
 ## Team manager (14a–14c)
@@ -89,12 +93,12 @@ are complete, plus bracket auto-advance, weather holds (12d/13c), concessions
 ## Add existing teams from records (16a–16b)
 | Screen | Status | Notes |
 |---|---|---|
-| 16a Find a team / 16b Confirm record | ⬜ | **No cross-event team directory** (reuse stored teams + managers on file). |
+| 16a Find a team / 16b Confirm record | ✅ | `/director/[id]/directory` — search your past events' teams and add the stored record (coach carried over). |
 
 ## Business & polish (17a–17e)
 | Screen | Status | Notes |
 |---|---|---|
-| 17a Sponsors (revenue placements) | ✅ | Director manages; shown on the public follower home. |
+| 17a Sponsors (revenue placements) | ✅ | Director manages + **logo image upload** (Supabase Storage); logos render on the follower home. |
 | 17b Staff & roles (co-directors, scorekeepers, marshals, scoped perms) | ✅ | Invite by email; scorekeepers post scores from `/score` (least-privilege verified). |
 | 17d App icon set | ✅ | Diamond mark @ 192/512/180 + favicon. |
 | 17e Offline | ✅ | SW serves an offline fallback page when the network drops. |
@@ -107,25 +111,33 @@ are complete, plus bracket auto-advance, weather holds (12d/13c), concessions
 
 ---
 
-## Beyond the mockups — functional gaps worth knowing
-These aren't separate screens but matter for a real event:
+## What's LEFT to create
 
-- ~~Bracket progression isn't automated.~~ **Done** — winners now auto-advance
-  into later rounds when a bracket game goes final (unit-tested).
-- ~~Notifications are stubbed.~~ **SMS (Twilio) and browser Web Push are both
-  real** — score/weather/concessions/broadcast alerts fan out to followers'
-  phones and subscribed devices when the `TWILIO_*` / `VAPID_*` env vars are set
-  (falls back to a stub log otherwise).
-- **No real payments.** Tied to 2d/2e above.
-- **Single-director events.** No way to delegate score-posting to a scorekeeper.
+### Fully unbuilt (the only one)
+1. **Payments / monetization — 2b, 2d, 2e.** No role-choice screen, no plan
+   selection (per-event / season pass), no checkout. The "directors pay to run"
+   model doesn't exist yet. Requires a payment provider (Stripe) + plan gating.
 
-## Suggested priority (highest leverage first)
-1. **Make notifications real** — it's the headline value prop and everything
-   downstream (alerts, weather, broadcasts) depends on it.
-2. **Staff & roles (17b)** — lets a director hand score-posting to volunteers;
-   essential for running an actual multi-field event.
-3. **Weather holds (12d/13c)** — the most-used day-of-event control after scoring.
-4. **Payments/plans (2b/2d/2e)** — turns it into a business.
-5. **Follower discovery (2f)** — growth: lets families find events without a link.
-6. **Polish:** CSV/registration import (3c), team directory (16a/b), notification
-   prefs (13b), bracket auto-advance, PWA install + icons, concessions, sponsors.
+### Partial — worth finishing
+2. **Personalized follower home (15a).** A team switcher that scopes the home to
+   your followed team's pool + schedule. Today the home is tournament-wide.
+5. **Manual field-assign UI (7b).** The engine already enforces field age/size
+   limits during auto-schedule; missing is a hand-assign screen that visibly
+   locks ineligible fields with the reason.
+6. **Welcome / choose-role split (2a/2b).** An explicit three-door welcome and a
+   pay-vs-free role picker (partly moot until payments exist).
+
+### Polish / minor
+7. **Quiet hours** for notifications (needs per-user timezone).
+8. **iOS custom splash images (17c)**; an embedded map view on fields/directions.
+9. **Dedicated follower "invite link" screen (2g)** — works today via `/t/[id]`.
+
+### Intentionally skipped
+- **1a Scoreboard / 1b Field Guide** — alternate design languages; Bold Bulletin
+  (1c) was the chosen direction.
+
+## Recommended order
+The remaining substantive build is **payments (2b/2d/2e)** — it turns the app
+into a business but is gated on a Stripe account + a pricing decision. After
+that it's polish: **personalized follower home (15a)**, **manual field-assign
+UI (7b)**, quiet hours, and iOS splash images.

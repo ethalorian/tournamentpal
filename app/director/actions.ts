@@ -115,6 +115,38 @@ export async function removeTeam(formData: FormData) {
   revalidatePath(`/director/${tournamentId}/teams`);
 }
 
+/** Add a team reused from one of the director's past events (16a/16b). */
+export async function addTeamFromRecord(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const managerId = String(formData.get("manager_id") ?? "") || null;
+  if (!name) return;
+
+  const { count } = await supabase
+    .from("teams")
+    .select("*", { count: "exact", head: true })
+    .eq("tournament_id", tournamentId);
+
+  await supabase.from("teams").insert({
+    tournament_id: tournamentId,
+    name,
+    manager_id: managerId,
+    seed: (count ?? 0) + 1,
+  });
+  revalidatePath(`/director/${tournamentId}/directory`);
+  revalidatePath(`/director/${tournamentId}/teams`);
+}
+
+/** Open or close self-serve team registration for a tournament. */
+export async function toggleRegistration(formData: FormData) {
+  const { supabase } = await client();
+  const tournamentId = String(formData.get("tournament_id") ?? "");
+  const open = formData.get("open") === "1";
+  await supabase.from("tournaments").update({ registration_open: open }).eq("id", tournamentId);
+  revalidatePath(`/director/${tournamentId}/teams`);
+}
+
 /* ------------------------------ Format ----------------------------- */
 
 export async function setFormat(formData: FormData) {

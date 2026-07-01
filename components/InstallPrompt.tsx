@@ -16,9 +16,11 @@ function isStandalone() {
   );
 }
 
+type Mode = "none" | "prompt" | "ios-safari" | "ios-other";
+
 export function InstallPrompt() {
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
-  const [isIOS, setIsIOS] = useState(false);
+  const [mode, setMode] = useState<Mode>("none");
   const [dismissed, setDismissed] = useState(true); // hidden until we decide to show
 
   useEffect(() => {
@@ -26,9 +28,11 @@ export function InstallPrompt() {
     if (sessionStorage.getItem("tp-install-dismissed")) return;
 
     const ua = window.navigator.userAgent;
-    const ios = /iphone|ipad|ipod/i.test(ua) && !/crios|fxios/i.test(ua); // Safari only
-    if (ios) {
-      setIsIOS(true);
+    const isIOSDevice = /iphone|ipad|ipod/i.test(ua);
+    if (isIOSDevice) {
+      // iOS can only install PWAs from Safari — other browsers can't.
+      const isSafari = !/crios|fxios|edgios|opios/i.test(ua);
+      setMode(isSafari ? "ios-safari" : "ios-other");
       setDismissed(false);
       return;
     }
@@ -36,6 +40,7 @@ export function InstallPrompt() {
     const onPrompt = (e: Event) => {
       e.preventDefault();
       setDeferred(e as BIPEvent);
+      setMode("prompt");
       setDismissed(false);
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
@@ -57,7 +62,7 @@ export function InstallPrompt() {
     close();
   }
 
-  if (dismissed || (!deferred && !isIOS)) return null;
+  if (dismissed || mode === "none") return null;
 
   return (
     <div className="mb-4 rounded-2xl border-2 border-ink bg-white p-4">
@@ -66,25 +71,34 @@ export function InstallPrompt() {
           TP
         </span>
         <div className="flex-1">
-          <div className="display text-[14px]">Add to your home screen</div>
-          {isIOS ? (
+          <div className="display text-[14px]">
+            {mode === "ios-other" ? "Install on iPhone" : "Add to your home screen"}
+          </div>
+          {mode === "ios-safari" && (
             <p className="mt-1 text-[12px] text-muted">
-              Tap the Share button, then <b className="text-ink">Add to Home Screen</b> — that also
-              turns on push alerts on iPhone.
+              Tap the <b className="text-ink">Share</b> button, then{" "}
+              <b className="text-ink">Add to Home Screen</b> — that also turns on push alerts on iPhone.
             </p>
-          ) : (
+          )}
+          {mode === "ios-other" && (
+            <p className="mt-1 text-[12px] text-muted">
+              On iPhone, apps can only be installed from <b className="text-ink">Safari</b>. Open this page
+              in Safari, then <b className="text-ink">Share → Add to Home Screen</b>.
+            </p>
+          )}
+          {mode === "prompt" && (
             <p className="mt-1 text-[12px] text-muted">
               Install the app for fullscreen, home-screen access and instant alerts.
             </p>
           )}
           <div className="mt-3 flex gap-2">
-            {!isIOS && (
+            {mode === "prompt" && (
               <button onClick={install} className="btn-accent flex h-9 items-center rounded-full px-4 text-[12px]">
                 Install
               </button>
             )}
             <button onClick={close} className="rounded-full border border-faint px-4 text-[12px] font-bold text-muted">
-              Not now
+              {mode === "prompt" ? "Not now" : "Got it"}
             </button>
           </div>
         </div>

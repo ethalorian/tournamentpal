@@ -22,7 +22,7 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
       user
         ? supabase.from("follows").select("team_id").eq("follower_id", user.id).eq("tournament_id", id)
         : Promise.resolve({ data: [] as { team_id: string }[] }),
-      supabase.from("sponsors").select("id,name,url,tier").eq("tournament_id", id).order("sort"),
+      supabase.from("sponsors").select("id,name,url,logo_url,tier").eq("tournament_id", id).order("sort"),
       user
         ? supabase.from("profiles").select("phone").eq("id", user.id).maybeSingle()
         : Promise.resolve({ data: null as { phone: string | null } | null }),
@@ -146,7 +146,16 @@ export default async function FollowerHome({ params }: { params: Promise<{ id: s
           <Eyebrow className="mb-2 text-center">Proudly sponsored by</Eyebrow>
           <div className="flex flex-wrap items-center justify-center gap-2">
             {sponsors.map((s) => {
-              const inner = (
+              const inner = s.logo_url ? (
+                <span
+                  className={`flex items-center justify-center rounded-xl p-2 ${
+                    s.tier === "headline" ? "bg-accent" : "border border-faint bg-white"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={s.logo_url} alt={s.name} className="h-10 max-w-[140px] object-contain" />
+                </span>
+              ) : (
                 <span
                   className={`display rounded-xl px-3 py-2 text-[13px] ${
                     s.tier === "headline" ? "bg-accent text-ink" : "border border-faint text-ink"

@@ -93,6 +93,7 @@ export type Database = {
           tournament_id: string
           name: string
           url: string | null
+          logo_url: string | null
           tier: string
           sort: number
           created_at: string
@@ -102,6 +103,7 @@ export type Database = {
           tournament_id: string
           name: string
           url?: string | null
+          logo_url?: string | null
           tier?: string
           sort?: number
           created_at?: string
@@ -111,6 +113,7 @@ export type Database = {
           tournament_id?: string
           name?: string
           url?: string | null
+          logo_url?: string | null
           tier?: string
           sort?: number
           created_at?: string
@@ -397,6 +400,7 @@ export type Database = {
           hold_set_at: string | null
           lat: number | null
           lng: number | null
+          registration_open: boolean
         }
         Insert: {
           created_at?: string
@@ -416,6 +420,7 @@ export type Database = {
           hold_set_at?: string | null
           lat?: number | null
           lng?: number | null
+          registration_open?: boolean
         }
         Update: {
           created_at?: string
@@ -435,6 +440,7 @@ export type Database = {
           hold_set_at?: string | null
           lat?: number | null
           lng?: number | null
+          registration_open?: boolean
         }
         Relationships: []
       }
@@ -464,6 +470,11 @@ export type Database = {
       delete_push_subscription: { Args: { p_endpoint: string }; Returns: undefined }
       is_member: { Args: { t_id: string }; Returns: boolean }
       can_score: { Args: { t_id: string }; Returns: boolean }
+      register_team: { Args: { t_id: string; p_name: string }; Returns: string }
+      registration_info: {
+        Args: { t_id: string }
+        Returns: { tournament_name: string; sport: string; is_open: boolean; status: string }[]
+      }
       add_staff_by_email: { Args: { t_id: string; p_email: string; p_role: string }; Returns: string }
     }
     Enums: { [_ in never]: never }

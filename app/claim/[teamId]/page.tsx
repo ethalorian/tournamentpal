@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Eyebrow, Field, inputClass, Button } from "@/components/ui";
+import { BackButton } from "@/components/BackButton";
 import { claimTeam } from "@/app/manager/actions";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,9 @@ export default async function ClaimPage({ params }: { params: Promise<{ teamId: 
 
   const Shell = ({ children }: { children: React.ReactNode }) => (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[460px] flex-col px-6 py-10">
+      <div className="mb-4">
+        <BackButton fallback="/" />
+      </div>
       <Link href="/" className="display text-[18px] tracking-[2px]">
         TOURNAMENTPAL
       </Link>
