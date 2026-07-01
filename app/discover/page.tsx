@@ -31,7 +31,7 @@ export default async function Discover({
     <div className="app-shell flex min-h-[100dvh] flex-col">
       <header className="flex items-center justify-between bg-ink px-5 py-3.5 text-white md:px-9 md:py-4">
         <Link href="/" className="display text-[15px] tracking-[1.5px] md:text-[18px]">
-          TOURNAMENTPAL
+          TOURNAMENT<span className="text-accent">PAL</span>
         </Link>
         <Link href="/login" className="rounded-lg border border-white/30 px-3 py-1.5 text-[12px] font-semibold">
           Sign in

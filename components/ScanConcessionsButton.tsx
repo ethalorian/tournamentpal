@@ -10,8 +10,8 @@ import { addScannedConcessions } from "@/app/director/concessions";
  * Multiple photos stack (append + de-dupe by name).
  */
 
-type Row = { key: string; name: string; price: string };
-type MenuItem = { name: string; price: number | null };
+type Row = { key: string; name: string; price: string; description: string };
+type MenuItem = { name: string; price: number | null; description?: string };
 
 export function ScanConcessionsButton({ tournamentId }: { tournamentId: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -74,6 +74,7 @@ export function ScanConcessionsButton({ tournamentId }: { tournamentId: string }
             key: `${Date.now()}-${next.length}-${k}`,
             name: it.name,
             price: it.price != null ? String(it.price) : "",
+            description: it.description ?? "",
           });
           added++;
         }
@@ -83,7 +84,7 @@ export function ScanConcessionsButton({ tournamentId }: { tournamentId: string }
     return added;
   }
 
-  function update(key: string, field: "name" | "price", value: string) {
+  function update(key: string, field: "name" | "price" | "description", value: string) {
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, [field]: value } : r)));
   }
 
@@ -143,31 +144,40 @@ export function ScanConcessionsButton({ tournamentId }: { tournamentId: string }
             <span className="eyebrow w-20">Price $</span>
             <span className="w-5" />
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             {rows.map((r) => (
-              <div key={r.key} className="flex items-center gap-2">
+              <div key={r.key} className="flex flex-col gap-1.5 rounded-lg bg-haze p-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    name="name"
+                    value={r.name}
+                    onChange={(e) => update(r.key, "name", e.target.value)}
+                    className="min-w-0 flex-1 rounded-lg border border-faint bg-white px-2.5 py-2 text-[13px] outline-none focus:border-ink"
+                  />
+                  <input
+                    name="price"
+                    value={r.price}
+                    onChange={(e) => update(r.key, "price", e.target.value)}
+                    inputMode="decimal"
+                    placeholder="—"
+                    className="w-20 rounded-lg border border-faint bg-white px-2.5 py-2 text-[13px] outline-none focus:border-ink placeholder:text-muted"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => remove(r.key)}
+                    aria-label={`Remove ${r.name}`}
+                    className="w-5 shrink-0 text-[15px] font-bold text-muted hover:text-danger"
+                  >
+                    ×
+                  </button>
+                </div>
                 <input
-                  name="name"
-                  value={r.name}
-                  onChange={(e) => update(r.key, "name", e.target.value)}
-                  className="min-w-0 flex-1 rounded-lg border border-faint bg-haze px-2.5 py-2 text-[13px] outline-none focus:border-ink"
+                  name="description"
+                  value={r.description}
+                  onChange={(e) => update(r.key, "description", e.target.value)}
+                  placeholder="Description (optional)"
+                  className="w-full min-w-0 rounded-lg border border-faint bg-white px-2.5 py-1.5 text-[12px] outline-none focus:border-ink placeholder:text-muted"
                 />
-                <input
-                  name="price"
-                  value={r.price}
-                  onChange={(e) => update(r.key, "price", e.target.value)}
-                  inputMode="decimal"
-                  placeholder="—"
-                  className="w-20 rounded-lg border border-faint bg-haze px-2.5 py-2 text-[13px] outline-none focus:border-ink placeholder:text-muted"
-                />
-                <button
-                  type="button"
-                  onClick={() => remove(r.key)}
-                  aria-label={`Remove ${r.name}`}
-                  className="w-5 shrink-0 text-[15px] font-bold text-muted hover:text-danger"
-                >
-                  ×
-                </button>
               </div>
             ))}
           </div>

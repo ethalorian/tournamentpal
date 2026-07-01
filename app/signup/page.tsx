@@ -17,7 +17,7 @@ export default async function SignupPage({
         <BackButton fallback="/" />
       </div>
       <Link href="/" className="display text-[18px] tracking-[2px]">
-        TOURNAMENTPAL
+        TOURNAMENT<span className="text-blue">PAL</span>
       </Link>
       <div className="mt-12">
         <Eyebrow>{role === "follower" ? "Follow your teams" : "Run your first event"}</Eyebrow>

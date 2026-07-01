@@ -28,7 +28,7 @@ export function FollowerShell({
     <div className="app-shell flex flex-col md:my-6 md:min-h-[calc(100dvh-3rem)] md:overflow-hidden md:rounded-3xl md:border md:border-ink/10 md:shadow-[0_24px_60px_rgba(20,24,40,.12)]">
       <header className="flex items-center justify-between bg-ink px-5 py-3.5 text-white md:order-1 md:px-9 md:py-4">
         <Link href={`/t/${id}`} className="display text-[15px] tracking-[1.5px] md:text-[18px]">
-          TOURNAMENTPAL
+          TOURNAMENT<span className="text-accent">PAL</span>
         </Link>
         {dayLabel && <span className="display text-[13px] tracking-[1.5px] text-accent md:text-[15px]">{dayLabel}</span>}
       </header>

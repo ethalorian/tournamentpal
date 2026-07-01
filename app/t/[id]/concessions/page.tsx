@@ -36,12 +36,15 @@ export default async function FollowerConcessions({ params }: { params: Promise<
           {list.map((it, i) => (
             <div
               key={it.id}
-              className={`flex items-center justify-between px-4 py-3 ${i % 2 ? "bg-haze" : "bg-white"}`}
+              className={`flex items-center justify-between gap-3 px-4 py-3 ${i % 2 ? "bg-haze" : "bg-white"}`}
             >
-              <span className={`text-[15px] font-bold ${it.sold_out ? "text-muted line-through" : ""}`}>
-                {it.name}
-              </span>
-              <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <span className={`text-[15px] font-bold ${it.sold_out ? "text-muted line-through" : ""}`}>
+                  {it.name}
+                </span>
+                {it.description && <div className="mt-0.5 text-[12px] text-muted">{it.description}</div>}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
                 {it.sold_out ? (
                   <Badge tone="muted">Sold out</Badge>
                 ) : (

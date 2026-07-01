@@ -17,6 +17,7 @@ async function authed() {
 export async function addConcession(formData: FormData) {
   const tournamentId = String(formData.get("tournament_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
   const dollars = Number(formData.get("price") ?? 0);
   if (!name) return;
 
@@ -29,6 +30,7 @@ export async function addConcession(formData: FormData) {
   await supabase.from("concessions").insert({
     tournament_id: tournamentId,
     name,
+    description,
     price_cents: Math.round((isFinite(dollars) ? dollars : 0) * 100),
     sort: count ?? 0,
   });
@@ -40,6 +42,7 @@ export async function addScannedConcessions(formData: FormData) {
   const tournamentId = String(formData.get("tournament_id") ?? "");
   const names = formData.getAll("name").map((v) => String(v).trim());
   const prices = formData.getAll("price").map((v) => String(v));
+  const descriptions = formData.getAll("description").map((v) => String(v).trim());
   if (!tournamentId || names.length === 0) return;
 
   const { supabase } = await authed();
@@ -49,13 +52,20 @@ export async function addScannedConcessions(formData: FormData) {
     .eq("tournament_id", tournamentId);
   const base = count ?? 0;
 
-  const rows: { tournament_id: string; name: string; price_cents: number; sort: number }[] = [];
+  const rows: {
+    tournament_id: string;
+    name: string;
+    description: string | null;
+    price_cents: number;
+    sort: number;
+  }[] = [];
   for (let i = 0; i < names.length; i++) {
     if (!names[i]) continue;
     const dollars = Number(prices[i]);
     rows.push({
       tournament_id: tournamentId,
       name: names[i],
+      description: descriptions[i] || null,
       price_cents: Math.round((isFinite(dollars) ? dollars : 0) * 100),
       sort: base + rows.length,
     });

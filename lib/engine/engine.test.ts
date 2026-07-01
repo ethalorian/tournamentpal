@@ -226,6 +226,19 @@ test("assignSchedule: a pinned game is forced onto its field", () => {
   assert.equal(out[0].fieldId, "f2", "pinned game uses its assigned field");
 });
 
+test("computeBracketAdvancement: a round-1 bye advances the top seed", () => {
+  const games = [
+    { id: "r1g1", round: 1, pos: 0, home_team_id: "t1", away_team_id: null, home_score: null, away_score: null, status: "scheduled" },
+    { id: "r1g2", round: 1, pos: 1, home_team_id: "t2", away_team_id: "t3", home_score: null, away_score: null, status: "scheduled" },
+    { id: "r2g1", round: 2, pos: 0, home_team_id: null, away_team_id: null, home_score: null, away_score: null, status: "scheduled" },
+  ];
+  const updates = computeBracketAdvancement(games);
+  const r2 = updates.find((u) => u.id === "r2g1");
+  assert.ok(r2, "round 2 game updated");
+  assert.equal(r2!.home_team_id, "t1", "bye team advances");
+  assert.equal(r2!.away_team_id, null, "other slot waits for the real game");
+});
+
 test("assignSchedule: separated teams never share a time slot", () => {
   const games: ConstrainedGame[] = [
     { key: "a", stage: "pool", round: 1, homeTeamId: "t1", awayTeamId: "t2", divisionId: null },

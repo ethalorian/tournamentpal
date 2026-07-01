@@ -77,13 +77,16 @@ export default async function ConcessionsManage({
       ) : (
         <div className="flex flex-col gap-2">
           {list.map((it) => (
-            <div key={it.id} className="flex items-center justify-between rounded-xl border border-faint px-3.5 py-2.5">
-              <div className="flex items-center gap-2.5">
-                <span className={`text-[14px] font-bold ${it.sold_out ? "text-muted line-through" : ""}`}>{it.name}</span>
-                <span className="text-[12px] font-semibold text-muted">{price(it.price_cents)}</span>
-                {it.sold_out && <Badge tone="danger">Sold out</Badge>}
+            <div key={it.id} className="flex items-center justify-between gap-2 rounded-xl border border-faint px-3.5 py-2.5">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5">
+                  <span className={`text-[14px] font-bold ${it.sold_out ? "text-muted line-through" : ""}`}>{it.name}</span>
+                  <span className="text-[12px] font-semibold text-muted">{price(it.price_cents)}</span>
+                  {it.sold_out && <Badge tone="danger">Sold out</Badge>}
+                </div>
+                {it.description && <div className="mt-0.5 text-[11px] text-muted">{it.description}</div>}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <form action={toggleSoldOut}>
                   <input type="hidden" name="tournament_id" value={id} />
                   <input type="hidden" name="item_id" value={it.id} />
@@ -134,19 +137,24 @@ export default async function ConcessionsManage({
 
       <Card className="mt-4">
         <div className="display text-[15px]">Add a custom item</div>
-        <form action={addConcession} className="mt-3 flex items-end gap-2">
+        <form action={addConcession} className="mt-3 flex flex-col gap-3">
           <input type="hidden" name="tournament_id" value={id} />
-          <div className="flex-1">
-            <Field label="Name">
-              <input name="name" required className={inputClass} placeholder="Cheeseburger" />
-            </Field>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Field label="Name">
+                <input name="name" required className={inputClass} placeholder="Cheeseburger" />
+              </Field>
+            </div>
+            <div className="w-24">
+              <Field label="Price $">
+                <input name="price" type="number" step="0.25" inputMode="decimal" className={inputClass} placeholder="5.00" />
+              </Field>
+            </div>
           </div>
-          <div className="w-24">
-            <Field label="Price $">
-              <input name="price" type="number" step="0.25" inputMode="decimal" className={inputClass} placeholder="5.00" />
-            </Field>
-          </div>
-          <Button type="submit" variant="ink" className="mb-[1px]">Add</Button>
+          <Field label="Description" hint="Optional — shown to followers under the item.">
+            <input name="description" className={inputClass} placeholder="Quarter-pound patty, cheddar, brioche bun" />
+          </Field>
+          <Button type="submit" variant="ink" className="w-full">Add item</Button>
         </form>
       </Card>
     </DirectorShell>

@@ -89,6 +89,7 @@ export type Database = {
           id: string
           tournament_id: string
           name: string
+          description: string | null
           price_cents: number
           sold_out: boolean
           sort: number
@@ -98,6 +99,7 @@ export type Database = {
           id?: string
           tournament_id: string
           name: string
+          description?: string | null
           price_cents?: number
           sold_out?: boolean
           sort?: number
@@ -107,6 +109,7 @@ export type Database = {
           id?: string
           tournament_id?: string
           name?: string
+          description?: string | null
           price_cents?: number
           sold_out?: boolean
           sort?: number

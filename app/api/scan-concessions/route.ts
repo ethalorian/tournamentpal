@@ -16,12 +16,14 @@ const ALLOWED_MEDIA = new Set(["image/png", "image/jpeg", "image/webp", "image/g
 
 const SYSTEM_PROMPT =
   "You read a concession-stand / food menu from a photo and extract the items " +
-  "for sale with their prices. For each item return its name exactly as shown " +
-  "and its price as a number in dollars (e.g. 5, 5.5, 3.25). If an item has no " +
-  "visible price, use null. Ignore headings, section titles, decorations, and " +
-  "anything that isn't a purchasable item. Respond with ONLY a JSON object of " +
-  'the form {"items": [{"name": "Cheeseburger", "price": 5}, ' +
-  '{"name": "Water", "price": 1.5}]} and nothing else.';
+  "for sale. For each item return its name exactly as shown, its price as a " +
+  "number in dollars (e.g. 5, 5.5, 3.25; null if none is visible), and a short " +
+  "description if the menu shows one (what's in it / toppings / size) — else an " +
+  'empty string "". Ignore headings, section titles, decorations, and anything ' +
+  "that isn't a purchasable item. Respond with ONLY a JSON object of the form " +
+  '{"items": [{"name": "Cheeseburger", "price": 5, "description": "1/4 lb, ' +
+  'cheddar, brioche bun"}, {"name": "Water", "price": 1.5, "description": ""}]} ' +
+  "and nothing else.";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ items: parseItems(text) });
 }
 
-type MenuItem = { name: string; price: number | null };
+type MenuItem = { name: string; price: number | null; description: string };
 
 /** Extract the items array, tolerating a ```json fence or stray prose. */
 function parseItems(text: string): MenuItem[] {
@@ -124,6 +126,7 @@ function parseItems(text: string): MenuItem[] {
         .map((it: unknown): MenuItem => {
           const rec = (it && typeof it === "object" ? it : {}) as Record<string, unknown>;
           const name = String(rec.name ?? "").trim();
+          const description = String(rec.description ?? "").trim();
           const rawPrice = rec.price;
           let price: number | null = null;
           if (typeof rawPrice === "number" && isFinite(rawPrice)) price = rawPrice;
@@ -131,7 +134,7 @@ function parseItems(text: string): MenuItem[] {
             const n = parseFloat(rawPrice.replace(/[^0-9.]/g, ""));
             price = isFinite(n) ? n : null;
           }
-          return { name, price };
+          return { name, price, description };
         })
         .filter((it: MenuItem) => it.name.length > 0);
     }

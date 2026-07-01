@@ -35,7 +35,7 @@ export function TabBar({ tabs = DEFAULT_TABS }: { tabs?: Tab[] }) {
   return (
     <nav className="sticky bottom-0 z-30 flex items-center bg-ink px-2 pt-3 pb-6 md:order-first md:bottom-auto md:top-0 md:gap-2 md:px-6 md:py-3.5">
       <Link href="/director" className="mr-auto hidden md:block display text-[16px] tracking-[1.5px] text-white">
-        TOURNAMENTPAL
+        TOURNAMENT<span className="text-accent">PAL</span>
       </Link>
       {tabs.map((t) => {
         const active = t.href === "/director" ? pathname === "/director" : pathname.startsWith(t.href);

@@ -18,7 +18,7 @@ export default async function Home() {
       {/* ============ MOBILE HERO (unchanged phone-first design) ============ */}
       <div className="app-shell flex min-h-[100dvh] flex-col bg-ink text-white md:hidden">
         <header className="flex items-center justify-between px-6 pt-7">
-          <span className="display text-[18px] tracking-[2px]">TOURNAMENTPAL</span>
+          <span className="display text-[18px] tracking-[2px]">TOURNAMENT<span className="text-accent">PAL</span></span>
           <Link href={signInHref} className="rounded-lg border border-white/30 px-4 py-2 text-[13px] font-semibold">
             {user ? "Dashboard" : "Sign in"}
           </Link>
@@ -102,7 +102,7 @@ function DesktopHero18a({
 
       {/* nav */}
       <div className="relative flex items-center justify-between px-10 py-6">
-        <div className="display text-[20px] tracking-[1.5px]">TOURNAMENTPAL</div>
+        <div className="display text-[20px] tracking-[1.5px]">TOURNAMENT<span className="text-accent">PAL</span></div>
         <div className="flex items-center gap-7 text-[13px] font-semibold text-white/70">
           <span className="hidden lg:inline">Features</span>
           <span className="hidden lg:inline">Pricing</span>
@@ -197,7 +197,7 @@ function DesktopHero18a({
           >
             <div className="relative h-[392px] w-[222px] overflow-hidden rounded-[31px] bg-ink">
               <div className="flex items-center justify-between bg-ink px-4 pb-2.5 pt-3.5">
-                <div className="display text-[11px] tracking-[1px] text-white">TOURNAMENTPAL</div>
+                <div className="display text-[11px] tracking-[1px] text-white">TOURNAMENT<span className="text-accent">PAL</span></div>
                 <div className="display text-[9px] tracking-[1px] text-accent">LIVE</div>
               </div>
               <div className="h-full bg-white px-3 py-3">

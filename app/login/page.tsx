@@ -15,7 +15,7 @@ export default async function LoginPage({
         <BackButton fallback="/" />
       </div>
       <Link href="/" className="display text-[18px] tracking-[2px]">
-        TOURNAMENTPAL
+        TOURNAMENT<span className="text-blue">PAL</span>
       </Link>
       <div className="mt-12">
         <Eyebrow>Director sign in</Eyebrow>

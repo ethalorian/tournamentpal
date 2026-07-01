@@ -41,6 +41,20 @@ export async function proxy(request: NextRequest) {
     path.startsWith("/director") || path.startsWith("/manager") || path.startsWith("/score");
   const isAuthRoute = path.startsWith("/login") || path.startsWith("/signup");
 
+  // Private-beta gate for the director area: require a valid access code
+  // (stored as a cookie). Only enforced when BETA_ACCESS_CODE is configured.
+  const betaCode = process.env.BETA_ACCESS_CODE;
+  if (betaCode && path.startsWith("/director")) {
+    const hasBeta = request.cookies.get("beta_access")?.value === betaCode;
+    if (!hasBeta) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/beta";
+      url.search = "";
+      url.searchParams.set("next", path);
+      return NextResponse.redirect(url);
+    }
+  }
+
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

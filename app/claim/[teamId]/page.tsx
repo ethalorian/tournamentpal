@@ -7,6 +7,20 @@ import { claimTeam } from "@/app/manager/actions";
 
 export const dynamic = "force-dynamic";
 
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[460px] flex-col px-6 py-10">
+      <div className="mb-4">
+        <BackButton fallback="/" />
+      </div>
+      <Link href="/" className="display text-[18px] tracking-[2px]">
+        TOURNAMENT<span className="text-blue">PAL</span>
+      </Link>
+      <div className="mt-12">{children}</div>
+    </div>
+  );
+}
+
 export default async function ClaimPage({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = await params;
   const supabase = await createClient();
@@ -18,18 +32,6 @@ export default async function ClaimPage({ params }: { params: Promise<{ teamId: 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const Shell = ({ children }: { children: React.ReactNode }) => (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-[460px] flex-col px-6 py-10">
-      <div className="mb-4">
-        <BackButton fallback="/" />
-      </div>
-      <Link href="/" className="display text-[18px] tracking-[2px]">
-        TOURNAMENTPAL
-      </Link>
-      <div className="mt-12">{children}</div>
-    </div>
-  );
 
   // Already claimed
   if (row.claimed) {

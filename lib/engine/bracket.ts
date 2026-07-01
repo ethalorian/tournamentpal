@@ -18,6 +18,13 @@ export type BracketAdvance = {
 };
 
 function winnerOf(g: BracketGameLite): string | null {
+  // Round-1 bye: exactly one team is present (the paired seed doesn't exist), so
+  // that team — a top seed under standard seeding — advances without playing.
+  if (g.round === 1) {
+    const homePresent = g.home_team_id != null;
+    const awayPresent = g.away_team_id != null;
+    if (homePresent !== awayPresent) return homePresent ? g.home_team_id : g.away_team_id;
+  }
   if (g.status !== "final" || g.home_score == null || g.away_score == null) return null;
   if (g.home_score > g.away_score) return g.home_team_id;
   if (g.away_score > g.home_score) return g.away_team_id;

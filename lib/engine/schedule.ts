@@ -449,6 +449,13 @@ export function assignSchedule<G extends ConstrainedGame>(
   const out: (G & { fieldId: string | null; scheduledAt: string | null; conflict: string | null })[] = [];
 
   for (const g of sorted) {
+    // A round-1 bracket bye (one team, one empty slot) isn't played — leave it
+    // unplaced so it never occupies a field or time.
+    if (g.stage === "bracket" && g.round === 1 && (g.homeTeamId == null) !== (g.awayTeamId == null)) {
+      out.push({ ...g, fieldId: null, scheduledAt: null, conflict: null });
+      continue;
+    }
+
     const divWin = g.divisionName ? opts.divisionWindows.get(g.divisionName) : undefined;
     const homeC = g.homeTeamId ? opts.teamConstraints.get(g.homeTeamId) : undefined;
     const awayC = g.awayTeamId ? opts.teamConstraints.get(g.awayTeamId) : undefined;
