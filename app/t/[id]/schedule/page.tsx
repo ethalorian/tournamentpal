@@ -20,10 +20,11 @@ export default async function PublicSchedule({
   const tid = tournament.id;
   const tz = tournament.timezone;
 
-  const [{ data: teams }, { data: games }, { data: fields }] = await Promise.all([
+  const [{ data: teams }, { data: games }, { data: fields }, { data: divisions }] = await Promise.all([
     supabase.from("teams").select("id,name").eq("tournament_id", tid).order("name"),
     supabase.from("games").select("*").eq("tournament_id", tid).order("scheduled_at"),
     supabase.from("fields").select("id,name").eq("tournament_id", tid),
+    supabase.from("divisions").select("id,name").eq("tournament_id", tid).order("sort"),
   ]);
   const teamName = new Map((teams ?? []).map((t) => [t.id, t.name]));
   const fieldName = new Map((fields ?? []).map((f) => [f.id, f.name]));
@@ -37,6 +38,16 @@ export default async function PublicSchedule({
     ? allGames.filter((g) => g.home_team_id === team || g.away_team_id === team)
     : allGames;
   const bracketGames = allGames.filter((g) => g.stage === "bracket");
+
+  // One bracket per division so age groups stay visually separate.
+  const bracketSections = [
+    ...(divisions ?? []).map((d) => ({
+      id: d.id,
+      title: d.name as string | undefined,
+      games: bracketGames.filter((g) => g.division_id === d.id),
+    })),
+    { id: "_none", title: undefined, games: bracketGames.filter((g) => !g.division_id) },
+  ].filter((s) => s.games.length > 0);
 
   // Group the list view by calendar day.
   const groups = new Map<string, typeof allGames>();
@@ -61,7 +72,22 @@ export default async function PublicSchedule({
       <ScheduleControls id={id} view={view} team={team} teams={teams ?? []} />
 
       {view === "bracket" ? (
-        <BracketView games={bracketGames} teamName={teamName} focusTeamId={team || undefined} />
+        bracketSections.length === 0 ? (
+          <BracketView games={[]} teamName={teamName} />
+        ) : (
+          <div className="flex flex-col gap-8">
+            {bracketSections.map((s) => (
+              <BracketView
+                key={s.id}
+                title={s.title}
+                games={s.games}
+                teamName={teamName}
+                fieldName={fieldName}
+                focusTeamId={team || undefined}
+              />
+            ))}
+          </div>
+        )
       ) : (
         <>
           {listGames.length === 0 && (

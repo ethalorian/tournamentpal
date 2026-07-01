@@ -3,6 +3,7 @@ type BracketGame = {
   round: number;
   bracket_pos: number | null;
   bracket_slot: string | null;
+  field_id: string | null;
   home_team_id: string | null;
   away_team_id: string | null;
   home_seed: number | null;
@@ -29,10 +30,16 @@ export function BracketView({
   games,
   teamName,
   focusTeamId,
+  title,
+  fieldName,
 }: {
   games: BracketGame[];
   teamName: Map<string, string>;
   focusTeamId?: string;
+  /** Division name — shown as a heading so each age group's bracket is distinct. */
+  title?: string;
+  /** Field id → name, to label where each game is played. */
+  fieldName?: Map<string, string>;
 }) {
   if (games.length === 0) {
     return (
@@ -55,8 +62,15 @@ export function BracketView({
   const nm = (id: string | null) => (id ? teamName.get(id) ?? "TBD" : "TBD");
 
   return (
-    <div className="no-scrollbar -mx-5 overflow-x-auto px-5 pb-2 md:-mx-9 md:px-9">
-      <div className="flex gap-4">
+    <div>
+      {title && (
+        <div className="mb-2 flex items-center gap-2">
+          <h3 className="display text-[17px]">{title}</h3>
+          <span className="h-px flex-1 bg-faint" />
+        </div>
+      )}
+      <div className="no-scrollbar -mx-5 overflow-x-auto px-5 pb-2 md:-mx-9 md:px-9">
+        <div className="flex gap-4">
         {rounds.map((r) => {
           const list = byRound.get(r)!;
           return (
@@ -91,12 +105,19 @@ export function BracketView({
                       won={awayWon}
                       focus={Boolean(focusTeamId && g.away_team_id === focusTeamId)}
                     />
+                    {g.field_id && fieldName?.get(g.field_id) && (
+                      <div className="mt-1.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-muted">
+                        <span aria-hidden>📍</span>
+                        {fieldName.get(g.field_id)}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );

@@ -267,7 +267,7 @@ export default async function SchedulingPage({
               <input type="hidden" name="days" value={scheduleDays.join(",")} />
               {scheduleDays.map((day) => (
                 <div key={day} className="flex items-center justify-between gap-3">
-                  <span className="text-[13px] font-bold">
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-bold">
                     {new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
                       weekday: "short",
                       month: "short",
@@ -275,15 +275,17 @@ export default async function SchedulingPage({
                       timeZone: "UTC",
                     })}
                   </span>
-                  <select
-                    name={`stage:${day}`}
-                    defaultValue={savedDayStages[day] ?? "both"}
-                    className={`${inputClass} w-40`}
-                  >
-                    <option value="both">Both</option>
-                    <option value="pool">Pool play only</option>
-                    <option value="bracket">Elimination only</option>
-                  </select>
+                  <div className="w-40 shrink-0">
+                    <select
+                      name={`stage:${day}`}
+                      defaultValue={savedDayStages[day] ?? "both"}
+                      className={inputClass}
+                    >
+                      <option value="both">Both</option>
+                      <option value="pool">Pool play only</option>
+                      <option value="bracket">Elimination only</option>
+                    </select>
+                  </div>
                 </div>
               ))}
               <SaveButton savedLabel="Days saved ✓">Save day types</SaveButton>
@@ -341,35 +343,32 @@ export default async function SchedulingPage({
               <input type="hidden" name="tournament_id" value={id} />
               <input type="hidden" name="days" value={scheduleDays.join(",")} />
               {windowDays.map(({ day, start, windows }) => (
-                <div key={day} className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-bold">
+                <div key={day} className="rounded-lg bg-haze p-2.5">
+                  <div className="mb-2 text-[12px] font-bold">
                     {new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
                       weekday: "short",
                       month: "short",
                       day: "numeric",
                       timeZone: "UTC",
                     })}
-                  </span>
-                  <label className="flex items-center gap-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-muted">Start</span>
-                    <input
-                      name={`start:${day}`}
-                      type="time"
-                      defaultValue={start}
-                      className={`${inputClass} w-28`}
-                    />
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-muted">×</span>
-                    <input
-                      name={`windows:${day}`}
-                      type="number"
-                      min={1}
-                      max={20}
-                      defaultValue={windows}
-                      className={`${inputClass} w-16`}
-                    />
-                  </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="flex flex-col">
+                      <span className="eyebrow mb-1">Start</span>
+                      <input name={`start:${day}`} type="time" defaultValue={start} className={inputClass} />
+                    </label>
+                    <label className="flex flex-col">
+                      <span className="eyebrow mb-1">Windows</span>
+                      <input
+                        name={`windows:${day}`}
+                        type="number"
+                        min={1}
+                        max={20}
+                        defaultValue={windows}
+                        className={inputClass}
+                      />
+                    </label>
+                  </div>
                 </div>
               ))}
               <SaveButton savedLabel="Windows saved ✓">Save day windows</SaveButton>
@@ -498,22 +497,22 @@ export default async function SchedulingPage({
           </p>
 
           <Card>
-            <form action={saveMinPoolGames} className="flex items-end gap-2">
+            <form action={saveMinPoolGames} className="flex flex-col gap-3">
               <input type="hidden" name="tournament_id" value={id} />
               <label className="flex flex-col">
                 <span className="eyebrow mb-2">Minimum pool games</span>
-                <input
-                  name="min"
-                  type="number"
-                  min={0}
-                  max={20}
-                  defaultValue={minPoolGames}
-                  className={`${inputClass} w-24`}
-                />
+                <div className="w-24">
+                  <input
+                    name="min"
+                    type="number"
+                    min={0}
+                    max={20}
+                    defaultValue={minPoolGames}
+                    className={inputClass}
+                  />
+                </div>
               </label>
-              <div className="mb-[1px]">
-                <SaveButton savedLabel="Saved ✓">Save</SaveButton>
-              </div>
+              <SaveButton savedLabel="Saved ✓">Save minimum</SaveButton>
             </form>
 
             {/* Per-team counts */}
@@ -692,18 +691,20 @@ export default async function SchedulingPage({
                       {" · "}
                       {g.bracket_slot ?? "Final"}
                     </span>
-                    <select
-                      name="field_id"
-                      defaultValue={g.field_id ?? ""}
-                      className={`${inputClass} w-40`}
-                    >
-                      <option value="">Auto-assign</option>
-                      {fieldList.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="w-40 shrink-0">
+                      <select
+                        name="field_id"
+                        defaultValue={g.field_id ?? ""}
+                        className={inputClass}
+                      >
+                        <option value="">Auto-assign</option>
+                        {fieldList.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                   <SaveButton savedLabel="Field set ✓">Set championship field</SaveButton>
                 </form>
